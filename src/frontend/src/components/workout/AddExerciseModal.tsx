@@ -26,9 +26,25 @@ const MUSCLE_GROUPS = [
 const CATEGORIES = [
   "Barbell",
   "Dumbbell",
-  "Cable",
   "Machine",
-  "Bodyweight",
+  "Weighted Bodyweight",
+  "Assisted Bodyweight",
+  "Reps Only",
+  "Cardio",
+  "Cable",
+  "Kettlebell",
+  "Other",
+] as const;
+
+const CUSTOM_CATEGORIES = [
+  "Barbell",
+  "Dumbbell",
+  "Machine",
+  "Weighted Bodyweight",
+  "Assisted Bodyweight",
+  "Reps Only",
+  "Cardio",
+  "Cable",
   "Kettlebell",
   "Other",
 ] as const;
@@ -66,34 +82,32 @@ export function AddExerciseModal({
   onAdd,
 }: AddExerciseModalProps) {
   const [search, setSearch] = useState("");
+  const [muscleFilter, setMuscleFilter] = useState<string>("All");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customMuscleGroup, setCustomMuscleGroup] = useState<string>(MUSCLE_GROUPS[0]);
-  const [customCategory, setCustomCategory] = useState<string>(CATEGORIES[0]);
+  const [customCategory, setCustomCategory] = useState<string>(CUSTOM_CATEGORIES[0]);
 
   const { data: exercises = [], isLoading } = useExerciseList();
   const createCustomExercise = useCreateCustomExercise();
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return exercises;
-    const q = search.toLowerCase();
-    return exercises.filter(
-      (e) =>
+    return exercises.filter((e) => {
+      const q = search.toLowerCase().trim();
+      const matchSearch =
+        !q ||
         e.name.toLowerCase().includes(q) ||
         e.muscleGroup.toLowerCase().includes(q) ||
-        e.category.toLowerCase().includes(q)
-    );
-  }, [exercises, search]);
-
-  const grouped = useMemo(() => {
-    const groups: Record<string, Exercise[]> = {};
-    for (const ex of filtered) {
-      const group = ex.muscleGroup || "Other";
-      if (!groups[group]) groups[group] = [];
-      groups[group].push(ex);
-    }
-    return groups;
-  }, [filtered]);
+        e.category.toLowerCase().includes(q);
+      const matchMuscle =
+        muscleFilter === "All" || e.muscleGroup === muscleFilter;
+      const matchCategory =
+        categoryFilter === "All" ||
+        e.category.toLowerCase() === categoryFilter.toLowerCase();
+      return matchSearch && matchMuscle && matchCategory;
+    });
+  }, [exercises, search, muscleFilter, categoryFilter]);
 
   const handleAdd = (exercise: Exercise) => {
     onAdd(exercise);
@@ -123,12 +137,12 @@ export function AddExerciseModal({
     setShowCustomForm(false);
     setCustomName("");
     setCustomMuscleGroup(MUSCLE_GROUPS[0]);
-    setCustomCategory(CATEGORIES[0]);
+    setCustomCategory(CUSTOM_CATEGORIES[0]);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md w-full p-0 gap-0 max-h-[85vh] flex flex-col">
+      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md w-full p-0 gap-0 max-h-[90vh] flex flex-col">
         <DialogHeader className="px-4 pt-4 pb-3 border-b border-zinc-800 shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-zinc-50 font-semibold">
@@ -160,6 +174,46 @@ export function AddExerciseModal({
               autoFocus
             />
           </div>
+
+          {/* Muscle group filter */}
+          <div className="mt-2.5 overflow-x-auto scrollbar-none -mx-1 px-1">
+            <div className="flex gap-1.5 w-max">
+              <FilterChip
+                label="All"
+                active={muscleFilter === "All"}
+                onClick={() => setMuscleFilter("All")}
+              />
+              {MUSCLE_GROUPS.map((g) => (
+                <FilterChip
+                  key={g}
+                  label={g}
+                  active={muscleFilter === g}
+                  onClick={() => setMuscleFilter(muscleFilter === g ? "All" : g)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Category filter */}
+          <div className="mt-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
+            <div className="flex gap-1.5 w-max">
+              <FilterChip
+                label="All"
+                active={categoryFilter === "All"}
+                onClick={() => setCategoryFilter("All")}
+                variant="category"
+              />
+              {CATEGORIES.map((c) => (
+                <FilterChip
+                  key={c}
+                  label={c}
+                  active={categoryFilter === c}
+                  onClick={() => setCategoryFilter(categoryFilter === c ? "All" : c)}
+                  variant="category"
+                />
+              ))}
+            </div>
+          </div>
         </DialogHeader>
 
         {/* Exercise List */}
@@ -173,55 +227,48 @@ export function AddExerciseModal({
                 />
               ))}
             </div>
-          ) : Object.keys(grouped).length === 0 && !showCustomForm ? (
+          ) : filtered.length === 0 && !showCustomForm ? (
             <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
               <Search size={32} className="mb-2 opacity-30" />
               <p className="text-sm">No exercises found</p>
             </div>
           ) : (
             <>
-              {Object.entries(grouped)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([group, exs]) => (
-                  <div key={group}>
-                    <div className="px-4 py-2 bg-zinc-950/50 border-b border-zinc-800/50">
-                      <span
-                        className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded ${getMuscleColor(group)}`}
-                      >
-                        {group}
-                      </span>
+              {filtered
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((exercise) => (
+                  <button
+                    key={exercise.id}
+                    type="button"
+                    onClick={() => handleAdd(exercise)}
+                    className="w-full flex items-center justify-between px-4 py-3 
+                               hover:bg-zinc-800/60 transition-colors border-b border-zinc-800/30
+                               text-left group"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="min-w-0">
+                        <p className="text-sm text-zinc-100 font-medium group-hover:text-white flex items-center gap-1.5">
+                          <span className="truncate">{exercise.name}</span>
+                          {exercise.isCustom && (
+                            <span className="text-[9px] bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0">
+                              Custom
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[11px] mt-0.5 flex items-center gap-1">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${getMuscleColor(exercise.muscleGroup)}`}>
+                            {exercise.muscleGroup}
+                          </span>
+                          <span className="text-zinc-600">{exercise.category}</span>
+                        </p>
+                      </div>
                     </div>
-                    {exs.map((exercise) => (
-                      <button
-                        key={exercise.id}
-                        type="button"
-                        onClick={() => handleAdd(exercise)}
-                        className="w-full flex items-center justify-between px-4 py-3 
-                                   hover:bg-zinc-800/60 transition-colors border-b border-zinc-800/30
-                                   text-left group"
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <div className="min-w-0">
-                            <p className="text-sm text-zinc-100 font-medium group-hover:text-white flex items-center gap-1.5">
-                              <span className="truncate">{exercise.name}</span>
-                              {exercise.isCustom && (
-                                <span className="text-[9px] bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0">
-                                  Custom
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-[11px] text-zinc-500 mt-0.5">
-                              {exercise.category}
-                            </p>
-                          </div>
-                        </div>
-                        <Plus
-                          size={16}
-                          className="text-zinc-600 group-hover:text-green-500 transition-colors shrink-0 ml-2"
-                        />
-                      </button>
-                    ))}
-                  </div>
+                    <Plus
+                      size={16}
+                      className="text-zinc-600 group-hover:text-green-500 transition-colors shrink-0 ml-2"
+                    />
+                  </button>
                 ))}
 
               {/* Create Custom Exercise */}
@@ -268,7 +315,7 @@ export function AddExerciseModal({
                       onChange={(e) => setCustomCategory(e.target.value)}
                       className={selectClass}
                     >
-                      {CATEGORIES.map((c) => (
+                      {CUSTOM_CATEGORIES.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -305,5 +352,35 @@ export function AddExerciseModal({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Filter Chip ──────────────────────────────────────────────────────────────
+
+interface FilterChipProps {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  variant?: "muscle" | "category";
+}
+
+function FilterChip({ label, active, onClick, variant = "muscle" }: FilterChipProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`
+        shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border
+        ${
+          active
+            ? variant === "category"
+              ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+              : "bg-green-500/20 text-green-400 border-green-500/40"
+            : "bg-zinc-800/60 text-zinc-500 border-zinc-700/60 hover:text-zinc-300 hover:border-zinc-600"
+        }
+      `}
+    >
+      {label}
+    </button>
   );
 }

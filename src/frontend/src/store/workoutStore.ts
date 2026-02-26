@@ -91,14 +91,16 @@ export const useWorkoutStore = create<LiveWorkoutStore>((set) => ({
       };
     });
 
-    set({
+    set((state) => ({
       sessionId: session.id,
-      name: session.name,
-      startedAt: Number(session.startedAt),
-      exercises: liveExercises,
-      restTimer: null,
-      isDirty: false,
-    });
+      name: state.sessionId === session.id ? state.name : session.name,
+      // startedAt is nanoseconds on ICP; convert to ms for Date.now() comparison
+      startedAt: Number(session.startedAt / 1_000_000n),
+      // Only overwrite exercises from backend if the store is clean (not dirty with user input)
+      exercises: state.isDirty ? state.exercises : liveExercises,
+      restTimer: state.restTimer,
+      isDirty: state.isDirty,
+    }));
   },
 
   updateSetField: (exIdx, setIdx, field, value) =>
