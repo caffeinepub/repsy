@@ -10,6 +10,7 @@ export type Option<T> = Some<T> | None;
 export interface Exercise {
     id: string;
     name: string;
+    isCustom: boolean;
     category: string;
     muscleGroup: string;
 }
@@ -89,6 +90,7 @@ export interface backendInterface {
     addBodyMeasurement(userId: string, bodyPart: string, value: number, unit: string, loggedAt: bigint): Promise<BodyMeasurement>;
     addBodyWeightEntry(userId: string, weight: number, unit: string, loggedAt: bigint): Promise<BodyWeightEntry>;
     addExerciseToSession(sessionId: string, exerciseId: string): Promise<WorkoutSession>;
+    createCustomExercise(userId: string, name: string, muscleGroup: string, category: string): Promise<Exercise>;
     createTemplate(userId: string, name: string, exercises: Array<TemplateExercise>): Promise<WorkoutTemplate>;
     createWorkoutSession(userId: string, name: string, templateId: string | null): Promise<WorkoutSession>;
     deleteTemplate(id: string): Promise<boolean>;
@@ -97,6 +99,7 @@ export interface backendInterface {
     getBodyMeasurements(userId: string, bodyPart: string | null): Promise<Array<BodyMeasurement>>;
     getBodyWeightEntries(userId: string): Promise<Array<BodyWeightEntry>>;
     getExerciseList(): Promise<Array<Exercise>>;
+    getExercisesByMuscleGroup(muscleGroup: string): Promise<Array<Exercise>>;
     getTemplate(id: string): Promise<WorkoutTemplate>;
     getTemplates(userId: string): Promise<Array<WorkoutTemplate>>;
     getUser(id: string): Promise<User>;

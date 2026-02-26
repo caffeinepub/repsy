@@ -11,8 +11,35 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useTemplates, useCreateWorkoutSession, useDeleteTemplate, useCreateTemplate, useExerciseList } from "../hooks/useQueries";
+import { useTemplates, useCreateWorkoutSession, useDeleteTemplate, useCreateTemplate, useExerciseList, useCreateCustomExercise } from "../hooks/useQueries";
 import type { WorkoutTemplate, Exercise } from "../backend.d";
+
+const MUSCLE_GROUPS = [
+  "Chest",
+  "Shoulders",
+  "Triceps",
+  "Back",
+  "Biceps",
+  "Legs",
+  "Glutes",
+  "Core",
+  "Cardio/Full Body",
+] as const;
+
+const CATEGORIES = [
+  "Barbell",
+  "Dumbbell",
+  "Cable",
+  "Machine",
+  "Bodyweight",
+  "Kettlebell",
+  "Other",
+] as const;
+
+const selectClass =
+  "w-full bg-zinc-700 text-zinc-50 placeholder:text-zinc-500 " +
+  "px-3 py-2 rounded-md text-sm outline-none " +
+  "border border-zinc-600 focus:border-green-500 transition-colors appearance-none";
 
 interface CreateTemplateForm {
   name: string;
@@ -102,9 +129,15 @@ function CreateTemplateModal({
     exercises: [],
   });
   const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const [showCustomForm, setShowCustomForm] = useState(false);
   const [search, setSearch] = useState("");
+  const [customName, setCustomName] = useState("");
+  const [customMuscleGroup, setCustomMuscleGroup] = useState<string>(MUSCLE_GROUPS[0]);
+  const [customCategory, setCustomCategory] = useState<string>(CATEGORIES[0]);
+
   const { data: exercises = [] } = useExerciseList();
   const createTemplate = useCreateTemplate();
+  const createCustomExercise = useCreateCustomExercise();
 
   const filtered = exercises.filter(
     (e) =>
@@ -120,7 +153,35 @@ function CreateTemplateModal({
       ],
     }));
     setShowExercisePicker(false);
+    setShowCustomForm(false);
     setSearch("");
+    setCustomName("");
+    setCustomMuscleGroup(MUSCLE_GROUPS[0]);
+    setCustomCategory(CATEGORIES[0]);
+  };
+
+  const handleSaveCustom = async () => {
+    if (!customName.trim()) {
+      toast.error("Enter an exercise name");
+      return;
+    }
+    try {
+      const newExercise = await createCustomExercise.mutateAsync({
+        name: customName.trim(),
+        muscleGroup: customMuscleGroup,
+        category: customCategory,
+      });
+      handleAddExercise(newExercise);
+    } catch {
+      toast.error("Failed to create exercise");
+    }
+  };
+
+  const handleCancelCustom = () => {
+    setShowCustomForm(false);
+    setCustomName("");
+    setCustomMuscleGroup(MUSCLE_GROUPS[0]);
+    setCustomCategory(CATEGORIES[0]);
   };
 
   const handleSubmit = async () => {
@@ -147,12 +208,12 @@ function CreateTemplateModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-sm w-full p-0 gap-0">
-        <DialogHeader className="px-4 pt-4 pb-3 border-b border-zinc-800">
+      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-sm w-full p-0 gap-0 max-h-[90vh] flex flex-col">
+        <DialogHeader className="px-4 pt-4 pb-3 border-b border-zinc-800 shrink-0">
           <DialogTitle className="text-zinc-50">New Template</DialogTitle>
         </DialogHeader>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
           <input
             type="text"
             value={form.name}
@@ -167,7 +228,7 @@ function CreateTemplateModal({
 
           {/* Exercises */}
           <div className="space-y-2">
-              {form.exercises.map((ex, i) => (
+            {form.exercises.map((ex, i) => (
               <div
                 key={`${ex.exerciseId}-${i}`}
                 className="flex items-center gap-2 bg-zinc-800/50 rounded-md px-3 py-2"
@@ -222,38 +283,120 @@ function CreateTemplateModal({
               </button>
             ) : (
               <div className="bg-zinc-800 rounded-md overflow-hidden">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search exercises..."
-                  className="w-full bg-transparent text-zinc-50 placeholder:text-zinc-500 
-                             px-3 py-2 text-sm outline-none border-b border-zinc-700"
-                  autoFocus
-                />
-                <div className="max-h-40 overflow-y-auto">
-                  {filtered.slice(0, 20).map((ex) => (
-                    <button
-                      key={ex.id}
-                      type="button"
-                      onClick={() => handleAddExercise(ex)}
-                      className="w-full text-left px-3 py-2 text-sm text-zinc-300 
-                                 hover:bg-zinc-700/50 hover:text-white transition-colors"
+                {!showCustomForm ? (
+                  <>
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search exercises..."
+                      className="w-full bg-transparent text-zinc-50 placeholder:text-zinc-500 
+                                 px-3 py-2 text-sm outline-none border-b border-zinc-700"
+                      autoFocus
+                    />
+                    <div className="max-h-44 overflow-y-auto">
+                      {filtered.slice(0, 30).map((ex) => (
+                        <button
+                          key={ex.id}
+                          type="button"
+                          onClick={() => handleAddExercise(ex)}
+                          className="w-full text-left px-3 py-2 text-sm text-zinc-300 
+                                     hover:bg-zinc-700/50 hover:text-white transition-colors
+                                     flex items-center gap-2"
+                        >
+                          <span className="flex-1 truncate">{ex.name}</span>
+                          {ex.isCustom && (
+                            <span className="text-[9px] bg-zinc-700 text-zinc-500 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0">
+                              Custom
+                            </span>
+                          )}
+                          <span className="text-zinc-600 text-xs shrink-0">
+                            {ex.muscleGroup}
+                          </span>
+                        </button>
+                      ))}
+                      {/* Create Custom link */}
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomForm(true)}
+                        className="w-full text-left px-3 py-2.5 text-xs text-green-500/70
+                                   hover:text-green-400 hover:bg-zinc-700/30 transition-colors
+                                   border-t border-zinc-700 flex items-center gap-1.5"
+                      >
+                        <Plus size={12} />
+                        Create Custom Exercise
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-3 space-y-2.5">
+                    <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+                      New Custom Exercise
+                    </p>
+                    <input
+                      type="text"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="Exercise name"
+                      className="w-full bg-zinc-700 text-zinc-50 placeholder:text-zinc-500
+                                 px-3 py-2 rounded-md text-sm outline-none
+                                 border border-zinc-600 focus:border-green-500 transition-colors"
+                      autoFocus
+                    />
+                    <select
+                      value={customMuscleGroup}
+                      onChange={(e) => setCustomMuscleGroup(e.target.value)}
+                      className={selectClass}
                     >
-                      {ex.name}
-                      <span className="text-zinc-600 text-xs ml-2">
-                        {ex.muscleGroup}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                      {MUSCLE_GROUPS.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      className={selectClass}
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={handleCancelCustom}
+                        className="flex-1 h-8 rounded text-xs text-zinc-400 border border-zinc-600
+                                   hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveCustom()}
+                        disabled={createCustomExercise.isPending}
+                        className="flex-1 h-8 rounded text-xs bg-green-500 hover:bg-green-400
+                                   text-zinc-950 font-semibold transition-colors disabled:opacity-60
+                                   flex items-center justify-center gap-1"
+                      >
+                        {createCustomExercise.isPending ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : null}
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             disabled={createTemplate.isPending}
             className="w-full h-11 bg-green-500 hover:bg-green-400 text-zinc-950 font-semibold
                        rounded-md text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"

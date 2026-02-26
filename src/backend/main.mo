@@ -1,22 +1,23 @@
 import Text "mo:core/Text";
-import Map "mo:core/Map";
-import Array "mo:core/Array";
-import List "mo:core/List";
 import Iter "mo:core/Iter";
-import Time "mo:core/Time";
+import Array "mo:core/Array";
+import Map "mo:core/Map";
+import List "mo:core/List";
 import Nat "mo:core/Nat";
-import Float "mo:core/Float";
 import Int "mo:core/Int";
+import Bool "mo:core/Bool";
+import Float "mo:core/Float";
 import Runtime "mo:core/Runtime";
+import Time "mo:core/Time";
 import Order "mo:core/Order";
 
 actor {
-  // Data Types
   type Exercise = {
     id : Text;
     name : Text;
     muscleGroup : Text;
     category : Text;
+    isCustom : Bool;
   };
 
   module Exercise {
@@ -121,7 +122,6 @@ actor {
     sets : [WorkoutSetInput];
   };
 
-  // State
   let exerciseStore = Map.empty<Text, Exercise>();
   let templateStore = Map.empty<Text, WorkoutTemplate>();
   let sessionStore = Map.empty<Text, WorkoutSession>();
@@ -131,14 +131,14 @@ actor {
 
   var seeded = false;
 
-  // Helper Functions
   func generateId(prefix : Text) : Text {
     prefix # "-" # Time.now().toText();
   };
 
   // Seed Data
   public shared ({ caller }) func seed() : async () {
-    if (seeded) { return () };
+    if (seeded) { return };
+    seeded := true;
 
     // Seed user
     let user : User = {
@@ -151,14 +151,111 @@ actor {
 
     // Seed exercises
     let exercises = [
-      { id = "bench-press"; name = "Bench Press"; muscleGroup = "Chest"; category = "Barbell" },
-      { id = "squat"; name = "Squat"; muscleGroup = "Legs"; category = "Barbell" },
+      // Chest
+      { id = "bench-press"; name = "Bench Press"; muscleGroup = "Chest"; category = "Barbell"; isCustom = false },
+      { id = "incline-bench-press"; name = "Incline Bench Press"; muscleGroup = "Chest"; category = "Barbell"; isCustom = false },
+      { id = "decline-bench-press"; name = "Decline Bench Press"; muscleGroup = "Chest"; category = "Barbell"; isCustom = false },
+      { id = "dumbbell-fly"; name = "Dumbbell Fly"; muscleGroup = "Chest"; category = "Dumbbell"; isCustom = false },
+      { id = "cable-fly"; name = "Cable Fly"; muscleGroup = "Chest"; category = "Cable"; isCustom = false },
+      { id = "push-up"; name = "Push-Up"; muscleGroup = "Chest"; category = "Bodyweight"; isCustom = false },
+      { id = "chest-dip"; name = "Chest Dip"; muscleGroup = "Chest"; category = "Bodyweight"; isCustom = false },
+      { id = "pec-deck"; name = "Pec Deck"; muscleGroup = "Chest"; category = "Machine"; isCustom = false },
+      { id = "incline-dumbbell-press"; name = "Incline Dumbbell Press"; muscleGroup = "Chest"; category = "Dumbbell"; isCustom = false },
+      { id = "dumbbell-bench-press"; name = "Dumbbell Bench Press"; muscleGroup = "Chest"; category = "Dumbbell"; isCustom = false },
+
+      // Shoulders
+      { id = "overhead-press"; name = "Overhead Press"; muscleGroup = "Shoulders"; category = "Barbell"; isCustom = false },
+      { id = "dumbbell-shoulder-press"; name = "Dumbbell Shoulder Press"; muscleGroup = "Shoulders"; category = "Dumbbell"; isCustom = false },
+      { id = "arnold-press"; name = "Arnold Press"; muscleGroup = "Shoulders"; category = "Dumbbell"; isCustom = false },
+      { id = "lateral-raise"; name = "Lateral Raise"; muscleGroup = "Shoulders"; category = "Dumbbell"; isCustom = false },
+      { id = "front-raise"; name = "Front Raise"; muscleGroup = "Shoulders"; category = "Dumbbell"; isCustom = false },
+      { id = "face-pull"; name = "Face Pull"; muscleGroup = "Shoulders"; category = "Cable"; isCustom = false },
+      { id = "upright-row"; name = "Upright Row"; muscleGroup = "Shoulders"; category = "Barbell"; isCustom = false },
+      { id = "rear-delt-fly"; name = "Rear Delt Fly"; muscleGroup = "Shoulders"; category = "Dumbbell"; isCustom = false },
+      { id = "cable-lateral-raise"; name = "Cable Lateral Raise"; muscleGroup = "Shoulders"; category = "Cable"; isCustom = false },
+      { id = "machine-shoulder-press"; name = "Machine Shoulder Press"; muscleGroup = "Shoulders"; category = "Machine"; isCustom = false },
+
+      // Triceps
+      { id = "tricep-pushdown"; name = "Tricep Pushdown"; muscleGroup = "Triceps"; category = "Cable"; isCustom = false },
+      { id = "skull-crusher"; name = "Skull Crusher"; muscleGroup = "Triceps"; category = "Barbell"; isCustom = false },
+      { id = "overhead-tricep-extension"; name = "Overhead Tricep Extension"; muscleGroup = "Triceps"; category = "Dumbbell"; isCustom = false },
+      { id = "close-grip-bench-press"; name = "Close-Grip Bench Press"; muscleGroup = "Triceps"; category = "Barbell"; isCustom = false },
+      { id = "tricep-dip"; name = "Tricep Dip"; muscleGroup = "Triceps"; category = "Bodyweight"; isCustom = false },
+      { id = "diamond-push-up"; name = "Diamond Push-Up"; muscleGroup = "Triceps"; category = "Bodyweight"; isCustom = false },
+      { id = "cable-overhead-tricep-extension"; name = "Cable Overhead Tricep Extension"; muscleGroup = "Triceps"; category = "Cable"; isCustom = false },
+      { id = "tricep-kickback"; name = "Tricep Kickback"; muscleGroup = "Triceps"; category = "Dumbbell"; isCustom = false },
+
+      // Back
+      { id = "deadlift"; name = "Deadlift"; muscleGroup = "Back"; category = "Barbell"; isCustom = false },
+      { id = "barbell-row"; name = "Barbell Row"; muscleGroup = "Back"; category = "Barbell"; isCustom = false },
+      { id = "dumbbell-row"; name = "Dumbbell Row"; muscleGroup = "Back"; category = "Dumbbell"; isCustom = false },
+      { id = "lat-pulldown"; name = "Lat Pulldown"; muscleGroup = "Back"; category = "Cable"; isCustom = false },
+      { id = "pull-up"; name = "Pull-Up"; muscleGroup = "Back"; category = "Bodyweight"; isCustom = false },
+      { id = "chin-up"; name = "Chin-Up"; muscleGroup = "Back"; category = "Bodyweight"; isCustom = false },
+      { id = "seated-cable-row"; name = "Seated Cable Row"; muscleGroup = "Back"; category = "Cable"; isCustom = false },
+      { id = "t-bar-row"; name = "T-Bar Row"; muscleGroup = "Back"; category = "Barbell"; isCustom = false },
+      { id = "rack-pull"; name = "Rack Pull"; muscleGroup = "Back"; category = "Barbell"; isCustom = false },
+      { id = "straight-arm-pulldown"; name = "Straight-Arm Pulldown"; muscleGroup = "Back"; category = "Cable"; isCustom = false },
+      { id = "chest-supported-row"; name = "Chest-Supported Row"; muscleGroup = "Back"; category = "Machine"; isCustom = false },
+
+      // Biceps
+      { id = "barbell-curl"; name = "Barbell Curl"; muscleGroup = "Biceps"; category = "Barbell"; isCustom = false },
+      { id = "dumbbell-curl"; name = "Dumbbell Curl"; muscleGroup = "Biceps"; category = "Dumbbell"; isCustom = false },
+      { id = "hammer-curl"; name = "Hammer Curl"; muscleGroup = "Dumbbell"; category = "Dumbbell"; isCustom = false },
+      { id = "incline-dumbbell-curl"; name = "Incline Dumbbell Curl"; muscleGroup = "Biceps"; category = "Dumbbell"; isCustom = false },
+      { id = "cable-curl"; name = "Cable Curl"; muscleGroup = "Biceps"; category = "Cable"; isCustom = false },
+      { id = "preacher-curl"; name = "Preacher Curl"; muscleGroup = "Biceps"; category = "Barbell"; isCustom = false },
+      { id = "concentration-curl"; name = "Concentration Curl"; muscleGroup = "Biceps"; category = "Dumbbell"; isCustom = false },
+      { id = "ez-bar-curl"; name = "EZ-Bar Curl"; muscleGroup = "Barbell"; category = "Barbell"; isCustom = false },
+      { id = "spider-curl"; name = "Spider Curl"; muscleGroup = "Dumbbell"; category = "Dumbbell"; isCustom = false },
+
+      // Legs
+      { id = "squat"; name = "Squat"; muscleGroup = "Legs"; category = "Barbell"; isCustom = false },
+      { id = "front-squat"; name = "Front Squat"; muscleGroup = "Legs"; category = "Barbell"; isCustom = false },
+      { id = "leg-press"; name = "Leg Press"; muscleGroup = "Legs"; category = "Machine"; isCustom = false },
+      { id = "romanian-deadlift"; name = "Romanian Deadlift"; muscleGroup = "Legs"; category = "Barbell"; isCustom = false },
+      { id = "bulgarian-split-squat"; name = "Bulgarian Split Squat"; muscleGroup = "Legs"; category = "Dumbbell"; isCustom = false },
+      { id = "leg-extension"; name = "Leg Extension"; muscleGroup = "Legs"; category = "Machine"; isCustom = false },
+      { id = "leg-curl"; name = "Leg Curl"; muscleGroup = "Legs"; category = "Machine"; isCustom = false },
+      { id = "calf-raise"; name = "Calf Raise"; muscleGroup = "Legs"; category = "Machine"; isCustom = false },
+      { id = "hack-squat"; name = "Hack Squat"; muscleGroup = "Legs"; category = "Machine"; isCustom = false },
+      { id = "goblet-squat"; name = "Goblet Squat"; muscleGroup = "Legs"; category = "Dumbbell"; isCustom = false },
+      { id = "walking-lunge"; name = "Walking Lunge"; muscleGroup = "Legs"; category = "Dumbbell"; isCustom = false },
+      { id = "step-up"; name = "Step-Up"; muscleGroup = "Legs"; category = "Dumbbell"; isCustom = false },
+      { id = "sumo-deadlift"; name = "Sumo Deadlift"; muscleGroup = "Legs"; category = "Barbell"; isCustom = false },
+      { id = "seated-calf-raise"; name = "Seated Calf Raise"; muscleGroup = "Legs"; category = "Machine"; isCustom = false },
+
+      // Glutes
+      { id = "hip-thrust"; name = "Hip Thrust"; muscleGroup = "Glutes"; category = "Barbell"; isCustom = false },
+      { id = "glute-bridge"; name = "Glute Bridge"; muscleGroup = "Glutes"; category = "Bodyweight"; isCustom = false },
+      { id = "cable-kickback"; name = "Cable Kickback"; muscleGroup = "Glutes"; category = "Cable"; isCustom = false },
+      { id = "donkey-kick"; name = "Donkey Kick"; muscleGroup = "Glutes"; category = "Bodyweight"; isCustom = false },
+      { id = "abductor-machine"; name = "Abductor Machine"; muscleGroup = "Glutes"; category = "Machine"; isCustom = false },
+
+      // Core
+      { id = "plank"; name = "Plank"; muscleGroup = "Core"; category = "Bodyweight"; isCustom = false },
+      { id = "crunch"; name = "Crunch"; muscleGroup = "Core"; category = "Bodyweight"; isCustom = false },
+      { id = "hanging-leg-raise"; name = "Hanging Leg Raise"; muscleGroup = "Core"; category = "Bodyweight"; isCustom = false },
+      { id = "ab-wheel-rollout"; name = "Ab Wheel Rollout"; muscleGroup = "Core"; category = "Other"; isCustom = false },
+      { id = "russian-twist"; name = "Russian Twist"; muscleGroup = "Core"; category = "Bodyweight"; isCustom = false },
+      { id = "cable-crunch"; name = "Cable Crunch"; muscleGroup = "Core"; category = "Cable"; isCustom = false },
+      { id = "decline-sit-up"; name = "Decline Sit-Up"; muscleGroup = "Core"; category = "Bodyweight"; isCustom = false },
+      { id = "bicycle-crunch"; name = "Bicycle Crunch"; muscleGroup = "Core"; category = "Bodyweight"; isCustom = false },
+      { id = "dragon-flag"; name = "Dragon Flag"; muscleGroup = "Core"; category = "Bodyweight"; isCustom = false },
+
+      // Cardio/Full Body
+      { id = "kettlebell-swing"; name = "Kettlebell Swing"; muscleGroup = "Cardio"; category = "Kettlebell"; isCustom = false },
+      { id = "farmers-walk"; name = "Farmers Walk"; muscleGroup = "Full Body"; category = "Dumbbell"; isCustom = false },
+      { id = "thruster"; name = "Thruster"; muscleGroup = "Full Body"; category = "Barbell"; isCustom = false },
+      { id = "box-jump"; name = "Box Jump"; muscleGroup = "Legs"; category = "Bodyweight"; isCustom = false },
+      { id = "battle-ropes"; name = "Battle Ropes"; muscleGroup = "Cardio"; category = "Other"; isCustom = false },
+      { id = "jump-rope"; name = "Jump Rope"; muscleGroup = "Cardio"; category = "Other"; isCustom = false },
+      { id = "burpee"; name = "Burpee"; muscleGroup = "Full Body"; category = "Bodyweight"; isCustom = false },
     ];
+
     for (ex in exercises.values()) {
       exerciseStore.add(ex.id, ex);
     };
-
-    seeded := true;
   };
 
   // Query Functions
@@ -379,5 +476,22 @@ actor {
         updatedSession;
       };
     };
+  };
+
+  public shared ({ caller }) func createCustomExercise(userId : Text, name : Text, muscleGroup : Text, category : Text) : async Exercise {
+    let id = generateId("exercise");
+    let exercise : Exercise = {
+      id;
+      name;
+      muscleGroup;
+      category;
+      isCustom = true;
+    };
+    exerciseStore.add(id, exercise);
+    exercise;
+  };
+
+  public query ({ caller }) func getExercisesByMuscleGroup(muscleGroup : Text) : async [Exercise] {
+    exerciseStore.values().toArray().filter(func(ex) { ex.muscleGroup == muscleGroup });
   };
 };

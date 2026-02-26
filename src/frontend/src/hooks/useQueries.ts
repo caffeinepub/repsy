@@ -23,7 +23,7 @@ export function useExerciseList() {
       return actor.getExerciseList();
     },
     enabled: !!actor && !isFetching,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 0,
   });
 }
 
@@ -37,6 +37,8 @@ export function useSearchExercises(query: string) {
       return actor.searchExercises(query);
     },
     enabled: !!actor && !isFetching,
+    staleTime: 0,
+    gcTime: 0,
   });
 }
 
@@ -329,6 +331,30 @@ export function useUpdateUser() {
     },
     onSuccess: (data) => {
       qc.setQueryData(["user", DEMO_USER_ID], data);
+    },
+  });
+}
+
+// ─── Custom Exercise ──────────────────────────────────────────────────────────
+
+export function useCreateCustomExercise() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      muscleGroup,
+      category,
+    }: {
+      name: string;
+      muscleGroup: string;
+      category: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.createCustomExercise(DEMO_USER_ID, name, muscleGroup, category);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["exercises"] });
     },
   });
 }

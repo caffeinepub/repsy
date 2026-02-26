@@ -1,4 +1,4 @@
- 
+/* eslint-disable */
 
 // @ts-nocheck
 
@@ -28,6 +28,7 @@ export interface BodyWeightEntry {
 export interface Exercise {
   'id' : string,
   'name' : string,
+  'isCustom' : boolean,
   'category' : string,
   'muscleGroup' : string,
 }
@@ -98,6 +99,10 @@ export interface _SERVICE {
     BodyWeightEntry
   >,
   'addExerciseToSession' : ActorMethod<[string, string], WorkoutSession>,
+  'createCustomExercise' : ActorMethod<
+    [string, string, string, string],
+    Exercise
+  >,
   'createTemplate' : ActorMethod<
     [string, string, Array<TemplateExercise>],
     WorkoutTemplate
@@ -115,6 +120,7 @@ export interface _SERVICE {
   >,
   'getBodyWeightEntries' : ActorMethod<[string], Array<BodyWeightEntry>>,
   'getExerciseList' : ActorMethod<[], Array<Exercise>>,
+  'getExercisesByMuscleGroup' : ActorMethod<[string], Array<Exercise>>,
   'getTemplate' : ActorMethod<[string], WorkoutTemplate>,
   'getTemplates' : ActorMethod<[string], Array<WorkoutTemplate>>,
   'getUser' : ActorMethod<[string], User>,

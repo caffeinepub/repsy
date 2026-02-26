@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   createRouter,
   createRoute,
@@ -7,6 +7,7 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { BottomNav } from "./components/layout/BottomNav";
 import { StartPage } from "./pages/StartPage";
@@ -15,16 +16,40 @@ import { HistoryPage } from "./pages/HistoryPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { useSeed } from "./hooks/useQueries";
+import { useActor } from "./hooks/useActor";
+
+const SEED_KEY = "repsy_seeded_v1";
 
 // ─── Seed initializer ─────────────────────────────────────────────────────────
+// Seeds the backend once per session (backend is idempotent).
+// After seed completes, invalidates exercises so the query never serves a
+// stale empty result that was cached before seed finished.
 
 function SeedInitializer() {
-  const seed = useSeed();
-  const { mutate: seedMutate } = seed;
+  const { actor, isFetching } = useActor();
+  const { mutate: seedMutate } = useSeed();
+  const qc = useQueryClient();
+  const hasFired = useRef(false);
 
   useEffect(() => {
-    seedMutate();
-  }, [seedMutate]);
+    // Wait until the actor is ready before attempting to seed
+    if (!actor || isFetching) return;
+    if (hasFired.current) return;
+    hasFired.current = true;
+
+    seedMutate(undefined, {
+      onSuccess: () => {
+        // Mark seeded so we know the exercises are populated
+        localStorage.setItem(SEED_KEY, "1");
+        // Ensure the exercise list is refetched fresh after seed
+        qc.invalidateQueries({ queryKey: ["exercises"] });
+      },
+      onError: () => {
+        // If seed fails, still invalidate so stale empty cache is cleared
+        qc.invalidateQueries({ queryKey: ["exercises"] });
+      },
+    });
+  }, [actor, isFetching, seedMutate, qc]);
 
   return null;
 }

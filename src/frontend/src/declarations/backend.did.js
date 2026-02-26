@@ -1,4 +1,4 @@
- 
+/* eslint-disable */
 
 // @ts-nocheck
 
@@ -50,6 +50,13 @@ export const WorkoutSession = IDL.Record({
   'prCount' : IDL.Nat,
   'finishedAt' : IDL.Opt(IDL.Int),
 });
+export const Exercise = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'isCustom' : IDL.Bool,
+  'category' : IDL.Text,
+  'muscleGroup' : IDL.Text,
+});
 export const TemplateExercise = IDL.Record({
   'exerciseId' : IDL.Text,
   'order' : IDL.Nat,
@@ -61,12 +68,6 @@ export const WorkoutTemplate = IDL.Record({
   'name' : IDL.Text,
   'createdAt' : IDL.Int,
   'exercises' : IDL.Vec(TemplateExercise),
-});
-export const Exercise = IDL.Record({
-  'id' : IDL.Text,
-  'name' : IDL.Text,
-  'category' : IDL.Text,
-  'muscleGroup' : IDL.Text,
 });
 export const User = IDL.Record({
   'id' : IDL.Text,
@@ -99,6 +100,11 @@ export const idlService = IDL.Service({
       [],
     ),
   'addExerciseToSession' : IDL.Func([IDL.Text, IDL.Text], [WorkoutSession], []),
+  'createCustomExercise' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [Exercise],
+      [],
+    ),
   'createTemplate' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Vec(TemplateExercise)],
       [WorkoutTemplate],
@@ -123,6 +129,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getExerciseList' : IDL.Func([], [IDL.Vec(Exercise)], ['query']),
+  'getExercisesByMuscleGroup' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(Exercise)],
+      ['query'],
+    ),
   'getTemplate' : IDL.Func([IDL.Text], [WorkoutTemplate], ['query']),
   'getTemplates' : IDL.Func([IDL.Text], [IDL.Vec(WorkoutTemplate)], ['query']),
   'getUser' : IDL.Func([IDL.Text], [User], ['query']),
@@ -192,6 +203,13 @@ export const idlFactory = ({ IDL }) => {
     'prCount' : IDL.Nat,
     'finishedAt' : IDL.Opt(IDL.Int),
   });
+  const Exercise = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'isCustom' : IDL.Bool,
+    'category' : IDL.Text,
+    'muscleGroup' : IDL.Text,
+  });
   const TemplateExercise = IDL.Record({
     'exerciseId' : IDL.Text,
     'order' : IDL.Nat,
@@ -203,12 +221,6 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'createdAt' : IDL.Int,
     'exercises' : IDL.Vec(TemplateExercise),
-  });
-  const Exercise = IDL.Record({
-    'id' : IDL.Text,
-    'name' : IDL.Text,
-    'category' : IDL.Text,
-    'muscleGroup' : IDL.Text,
   });
   const User = IDL.Record({
     'id' : IDL.Text,
@@ -245,6 +257,11 @@ export const idlFactory = ({ IDL }) => {
         [WorkoutSession],
         [],
       ),
+    'createCustomExercise' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [Exercise],
+        [],
+      ),
     'createTemplate' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Vec(TemplateExercise)],
         [WorkoutTemplate],
@@ -273,6 +290,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getExerciseList' : IDL.Func([], [IDL.Vec(Exercise)], ['query']),
+    'getExercisesByMuscleGroup' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(Exercise)],
+        ['query'],
+      ),
     'getTemplate' : IDL.Func([IDL.Text], [WorkoutTemplate], ['query']),
     'getTemplates' : IDL.Func(
         [IDL.Text],
