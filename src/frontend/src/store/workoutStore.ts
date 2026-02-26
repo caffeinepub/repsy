@@ -44,6 +44,7 @@ interface LiveWorkoutStore {
   completeSet: (exIdx: number, setIdx: number) => void;
   addSet: (exIdx: number) => void;
   addExercise: (exercise: Exercise) => void;
+  removeExercise: (exIdx: number) => void;
   updateName: (name: string) => void;
   tickRestTimer: () => void;
   dismissRestTimer: () => void;
@@ -175,6 +176,12 @@ export const useWorkoutStore = create<LiveWorkoutStore>((set) => ({
       };
       return { exercises: [...state.exercises, newExercise], isDirty: true };
     }),
+
+  removeExercise: (exIdx) =>
+    set((state) => ({
+      exercises: state.exercises.filter((_, i) => i !== exIdx),
+      isDirty: true,
+    })),
 
   updateName: (name) => set({ name, isDirty: true }),
 

@@ -195,6 +195,9 @@ export function useDeleteWorkoutSession() {
   });
 }
 
+// Alias for cancelling an in-progress session
+export const useCancelWorkoutSession = useDeleteWorkoutSession;
+
 export function useAddExerciseToSession() {
   const { actor } = useActor();
   const qc = useQueryClient();

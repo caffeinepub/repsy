@@ -175,44 +175,28 @@ export function AddExerciseModal({
             />
           </div>
 
-          {/* Muscle group filter */}
-          <div className="mt-2.5 overflow-x-auto scrollbar-none -mx-1 px-1">
-            <div className="flex gap-1.5 w-max">
-              <FilterChip
-                label="All"
-                active={muscleFilter === "All"}
-                onClick={() => setMuscleFilter("All")}
-              />
+          {/* Filters — two dropdowns */}
+          <div className="mt-2.5 flex gap-2">
+            <select
+              value={muscleFilter}
+              onChange={(e) => setMuscleFilter(e.target.value)}
+              className={selectClass + " flex-1"}
+            >
+              <option value="All">All Muscles</option>
               {MUSCLE_GROUPS.map((g) => (
-                <FilterChip
-                  key={g}
-                  label={g}
-                  active={muscleFilter === g}
-                  onClick={() => setMuscleFilter(muscleFilter === g ? "All" : g)}
-                />
+                <option key={g} value={g}>{g}</option>
               ))}
-            </div>
-          </div>
-
-          {/* Category filter */}
-          <div className="mt-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
-            <div className="flex gap-1.5 w-max">
-              <FilterChip
-                label="All"
-                active={categoryFilter === "All"}
-                onClick={() => setCategoryFilter("All")}
-                variant="category"
-              />
+            </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className={selectClass + " flex-1"}
+            >
+              <option value="All">All Categories</option>
               {CATEGORIES.map((c) => (
-                <FilterChip
-                  key={c}
-                  label={c}
-                  active={categoryFilter === c}
-                  onClick={() => setCategoryFilter(categoryFilter === c ? "All" : c)}
-                  variant="category"
-                />
+                <option key={c} value={c}>{c}</option>
               ))}
-            </div>
+            </select>
           </div>
         </DialogHeader>
 

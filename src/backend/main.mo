@@ -10,7 +10,9 @@ import Float "mo:core/Float";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Order "mo:core/Order";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   type Exercise = {
     id : Text;
@@ -360,14 +362,14 @@ actor {
             let newExercises = List.empty<SessionExercise>();
             for (input in inputs.values()) {
               let sets = List.empty<WorkoutSet>();
-              let setCount = if (input.sets.size() > 0) {
-                0;
-              } else { 0 };
-              for (i in Nat.range(1, setCount + 1)) {
-                let setInput = input.sets.find(func(s) { s.setNumber == i });
-                let set : WorkoutSet = switch (setInput) {
-                  case (null) { { id = generateId("set" # i.toText()); setNumber = i; weight = null; reps = null; completed = false; isPR = false } };
-                  case (?s) { { id = generateId("set" # i.toText()); setNumber = i; weight = s.weight; reps = s.reps; completed = s.completed; isPR = s.isPR } };
+              for (setInput in input.sets.values()) {
+                let set : WorkoutSet = {
+                  id = generateId("set" # setInput.setNumber.toText());
+                  setNumber = setInput.setNumber;
+                  weight = setInput.weight;
+                  reps = setInput.reps;
+                  completed = setInput.completed;
+                  isPR = setInput.isPR;
                 };
                 sets.add(set);
               };
@@ -383,11 +385,35 @@ actor {
           };
         };
 
+        // Calculate total volume
+        let totalVolume = updatedExercises.foldLeft(
+          0.0,
+          func(acc, exercise) {
+            acc + exercise.sets.foldLeft(
+              0.0,
+              func(setAcc, set) {
+                switch (set.weight, set.reps) {
+                  case (?weight, ?reps) {
+                    if (set.completed) {
+                      setAcc + (weight * reps.toFloat());
+                    } else {
+                      setAcc;
+                    };
+                  };
+                  case (null, _) { setAcc };
+                  case (_, null) { setAcc };
+                };
+              },
+            );
+          },
+        );
+
         let updatedSession : WorkoutSession = {
           existing with
           name;
           notes;
           exercises = updatedExercises;
+          totalVolume;
         };
         sessionStore.add(id, updatedSession);
         updatedSession;

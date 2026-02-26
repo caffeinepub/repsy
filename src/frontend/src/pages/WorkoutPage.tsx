@@ -9,10 +9,21 @@ import {
   Dumbbell,
   ChevronLeft,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useWorkoutStore } from "../store/workoutStore";
 import { AddExerciseModal } from "../components/workout/AddExerciseModal";
 import { RestTimer } from "../components/workout/RestTimer";
@@ -22,6 +33,7 @@ import {
   useUpdateWorkoutSession,
   useFinishWorkoutSession,
   useAddExerciseToSession,
+  useCancelWorkoutSession,
 } from "../hooks/useQueries";
 import type { SessionExerciseInput, WorkoutSetInput, Exercise } from "../backend.d";
 
@@ -249,20 +261,33 @@ function SetRow({
       </div>
 
       {/* Complete toggle — larger hit area, clearer states */}
-      <button
-        type="button"
-        onClick={() => completeSet(exIdx, setIdx)}
-        className={`
-          w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shrink-0
-          ${
-            completed
-              ? "bg-green-500 text-zinc-950 shadow-[0_0_16px_rgba(34,197,94,0.5)] scale-100"
-              : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-600 active:scale-95"
-          }
-        `}
-      >
-        <Check size={15} strokeWidth={completed ? 2.5 : 2} />
-      </button>
+      {(() => {
+        const canComplete = weight.trim().length > 0 && reps.trim().length > 0;
+        return (
+          <button
+            type="button"
+            onClick={() => {
+              if (!canComplete) {
+                toast.error("Enter weight and reps first");
+                return;
+              }
+              completeSet(exIdx, setIdx);
+            }}
+            className={`
+              w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shrink-0
+              ${
+                completed
+                  ? "bg-green-500 text-zinc-950 shadow-[0_0_16px_rgba(34,197,94,0.5)] scale-100"
+                  : !canComplete
+                  ? "bg-zinc-800 text-zinc-700 border border-zinc-800 opacity-40 cursor-not-allowed"
+                  : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-600 active:scale-95"
+              }
+            `}
+          >
+            <Check size={15} strokeWidth={completed ? 2.5 : 2} />
+          </button>
+        );
+      })()}
     </div>
   );
 }
@@ -276,6 +301,7 @@ interface ExerciseCardProps {
 function ExerciseCard({ exIdx }: ExerciseCardProps) {
   const exercise = useWorkoutStore((s) => s.exercises[exIdx]);
   const addSet = useWorkoutStore((s) => s.addSet);
+  const removeExercise = useWorkoutStore((s) => s.removeExercise);
 
   if (!exercise) return null;
 
@@ -316,6 +342,15 @@ function ExerciseCard({ exIdx }: ExerciseCardProps) {
             `}>
               {exercise.muscleGroup}
             </span>
+            {/* Remove exercise */}
+            <button
+              type="button"
+              onClick={() => removeExercise(exIdx)}
+              className="text-zinc-700 hover:text-red-500 transition-colors p-1 rounded"
+              title="Remove exercise"
+            >
+              <Trash2 size={14} />
+            </button>
           </div>
         </div>
       </div>
@@ -381,6 +416,7 @@ export function WorkoutPage() {
   const navigate = useNavigate();
   const [showFinish, setShowFinish] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const store = useWorkoutStore();
@@ -392,6 +428,7 @@ export function WorkoutPage() {
   const updateSession = useUpdateWorkoutSession();
   const finishSession = useFinishWorkoutSession();
   const addExToSession = useAddExerciseToSession();
+  const cancelSession = useCancelWorkoutSession();
 
   // Load session into store whenever session or exercises change
   useEffect(() => {
@@ -454,6 +491,17 @@ export function WorkoutPage() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!store.sessionId) return;
+    try {
+      await cancelSession.mutateAsync(store.sessionId);
+      store.reset();
+      void navigate({ to: "/history" });
+    } catch {
+      toast.error("Failed to cancel workout");
+    }
+  };
+
   const handleFinish = async () => {
     if (!store.sessionId) return;
     try {
@@ -471,6 +519,13 @@ export function WorkoutPage() {
       toast.error("Failed to finish workout");
     }
   };
+
+  // Finish guard — all sets must be completed
+  const allSetsCompleted =
+    store.exercises.length > 0 &&
+    store.exercises.every(
+      (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+    );
 
   // Calculate volume from store
   const currentVolume = store.exercises.reduce((total, ex) => {
@@ -499,7 +554,7 @@ export function WorkoutPage() {
         <div className="flex items-center gap-2 px-3 h-14">
           <button
             type="button"
-            onClick={() => void navigate({ to: "/history" })}
+            onClick={() => setShowCancel(true)}
             className="text-zinc-600 hover:text-zinc-300 transition-colors p-1.5 rounded-lg hover:bg-zinc-800 shrink-0"
           >
             <ChevronLeft size={20} />
@@ -525,13 +580,19 @@ export function WorkoutPage() {
             {formatElapsed(elapsed)}
           </div>
 
-          {/* Finish button */}
+          {/* Finish button — disabled until all sets completed */}
           <button
             type="button"
-            onClick={() => setShowFinish(true)}
-            className="shrink-0 bg-green-500 hover:bg-green-400 active:scale-95 text-zinc-950 font-bold
-                       text-xs px-4 h-9 rounded-lg transition-all ml-1
-                       shadow-[0_2px_12px_rgba(34,197,94,0.3)]"
+            onClick={() => allSetsCompleted && setShowFinish(true)}
+            disabled={!allSetsCompleted}
+            title={!allSetsCompleted ? "Complete all sets to finish" : undefined}
+            className={`shrink-0 text-zinc-950 font-bold text-xs px-4 h-9 rounded-lg transition-all ml-1
+              ${
+                allSetsCompleted
+                  ? "bg-green-500 hover:bg-green-400 active:scale-95 shadow-[0_2px_12px_rgba(34,197,94,0.3)]"
+                  : "bg-zinc-700 text-zinc-500 cursor-not-allowed opacity-50"
+              }
+            `}
           >
             Finish
           </button>
@@ -602,6 +663,38 @@ export function WorkoutPage() {
         )}
         isPending={finishSession.isPending || updateSession.isPending}
       />
+
+      {/* Cancel workout confirmation */}
+      <AlertDialog open={showCancel} onOpenChange={setShowCancel}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800 max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-50">
+              Cancel workout?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              This workout will be deleted and cannot be recovered.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100"
+              onClick={() => setShowCancel(false)}
+            >
+              Keep Going
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-500 text-white"
+              onClick={() => void handleCancel()}
+              disabled={cancelSession.isPending}
+            >
+              {cancelSession.isPending ? (
+                <Loader2 size={14} className="animate-spin mr-1.5" />
+              ) : null}
+              Cancel Workout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
