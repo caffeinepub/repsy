@@ -7,25 +7,23 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface Exercise {
+export interface SessionExercise {
     id: string;
-    name: string;
-    isCustom: boolean;
-    category: string;
-    muscleGroup: string;
+    exerciseId: string;
+    order: bigint;
+    sets: Array<WorkoutSet>;
 }
 export interface TemplateExercise {
     exerciseId: string;
     order: bigint;
     sets: bigint;
 }
-export interface BodyMeasurement {
+export interface Exercise {
     id: string;
-    value: number;
-    userId: string;
-    unit: string;
-    bodyPart: string;
-    loggedAt: bigint;
+    name: string;
+    isCustom: boolean;
+    category: string;
+    muscleGroup: string;
 }
 export interface WorkoutSet {
     id: string;
@@ -34,6 +32,14 @@ export interface WorkoutSet {
     isPR: boolean;
     reps?: bigint;
     completed: boolean;
+}
+export interface BodyMeasurement {
+    id: string;
+    value: number;
+    userId: string;
+    unit: string;
+    bodyPart: string;
+    loggedAt: bigint;
 }
 export interface WorkoutSession {
     id: string;
@@ -48,16 +54,16 @@ export interface WorkoutSession {
     prCount: bigint;
     finishedAt?: bigint;
 }
-export interface SessionExerciseInput {
-    exerciseId: string;
-    order: bigint;
-    sets: Array<WorkoutSetInput>;
-}
 export interface User {
     id: string;
     username: string;
     name: string;
     email: string;
+}
+export interface SessionExerciseInput {
+    exerciseId: string;
+    order: bigint;
+    sets: Array<WorkoutSetInput>;
 }
 export interface BodyWeightEntry {
     id: string;
@@ -80,33 +86,44 @@ export interface WorkoutTemplate {
     createdAt: bigint;
     exercises: Array<TemplateExercise>;
 }
-export interface SessionExercise {
-    id: string;
-    exerciseId: string;
-    order: bigint;
-    sets: Array<WorkoutSet>;
+export interface UserProfile {
+    username: string;
+    name: string;
+    email: string;
+}
+export enum UserRole {
+    admin = "admin",
+    user = "user",
+    guest = "guest"
 }
 export interface backendInterface {
-    addBodyMeasurement(userId: string, bodyPart: string, value: number, unit: string, loggedAt: bigint): Promise<BodyMeasurement>;
-    addBodyWeightEntry(userId: string, weight: number, unit: string, loggedAt: bigint): Promise<BodyWeightEntry>;
+    addBodyMeasurement(bodyPart: string, value: number, unit: string, loggedAt: bigint): Promise<BodyMeasurement>;
+    addBodyWeightEntry(weight: number, unit: string, loggedAt: bigint): Promise<BodyWeightEntry>;
     addExerciseToSession(sessionId: string, exerciseId: string): Promise<WorkoutSession>;
-    createCustomExercise(userId: string, name: string, muscleGroup: string, category: string): Promise<Exercise>;
-    createTemplate(userId: string, name: string, exercises: Array<TemplateExercise>): Promise<WorkoutTemplate>;
-    createWorkoutSession(userId: string, name: string, templateId: string | null): Promise<WorkoutSession>;
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createCustomExercise(name: string, muscleGroup: string, category: string): Promise<Exercise>;
+    createTemplate(name: string, exercises: Array<TemplateExercise>): Promise<WorkoutTemplate>;
+    createWorkoutSession(name: string, templateId: string | null): Promise<WorkoutSession>;
     deleteTemplate(id: string): Promise<boolean>;
     deleteWorkoutSession(id: string): Promise<boolean>;
     finishWorkoutSession(id: string, finishedAt: bigint): Promise<WorkoutSession>;
-    getBodyMeasurements(userId: string, bodyPart: string | null): Promise<Array<BodyMeasurement>>;
-    getBodyWeightEntries(userId: string): Promise<Array<BodyWeightEntry>>;
+    getBodyMeasurements(bodyPart: string | null): Promise<Array<BodyMeasurement>>;
+    getBodyWeightEntries(): Promise<Array<BodyWeightEntry>>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
+    getCallerUserRole(): Promise<UserRole>;
     getExerciseList(): Promise<Array<Exercise>>;
     getExercisesByMuscleGroup(muscleGroup: string): Promise<Array<Exercise>>;
     getTemplate(id: string): Promise<WorkoutTemplate>;
-    getTemplates(userId: string): Promise<Array<WorkoutTemplate>>;
-    getUser(id: string): Promise<User>;
+    getTemplates(): Promise<Array<WorkoutTemplate>>;
+    getUser(): Promise<User>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
     getWorkoutSession(id: string): Promise<WorkoutSession>;
-    getWorkoutSessions(userId: string): Promise<Array<WorkoutSession>>;
+    getWorkoutSessions(): Promise<Array<WorkoutSession>>;
+    isCallerAdmin(): Promise<boolean>;
+    register(name: string, username: string, email: string): Promise<User>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchExercises(searchQuery: string): Promise<Array<Exercise>>;
     seed(): Promise<void>;
-    updateUser(id: string, name: string, username: string, email: string): Promise<User>;
+    updateUser(name: string, username: string, email: string): Promise<User>;
     updateWorkoutSession(id: string, name: string, notes: string | null, exercisesInput: Array<SessionExerciseInput> | null): Promise<WorkoutSession>;
 }

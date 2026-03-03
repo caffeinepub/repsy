@@ -1,27 +1,3 @@
-import { useState, useMemo } from "react";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { format, startOfWeek, subWeeks, isAfter } from "date-fns";
-import {
-  User,
-  Edit2,
-  Check,
-  X,
-  Plus,
-  Loader2,
-  Scale,
-  Ruler,
-} from "lucide-react";
-import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -35,13 +11,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { format, isAfter, startOfWeek, subWeeks } from "date-fns";
 import {
-  useUser,
-  useUpdateUser,
-  useBodyWeightEntries,
+  Check,
+  Edit2,
+  Loader2,
+  LogOut,
+  Plus,
+  Ruler,
+  Scale,
+  User,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { toast } from "sonner";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  useAddBodyMeasurement,
   useAddBodyWeightEntry,
   useBodyMeasurements,
-  useAddBodyMeasurement,
+  useBodyWeightEntries,
+  useUpdateUser,
+  useUser,
   useWorkoutSessions,
 } from "../hooks/useQueries";
 
@@ -86,7 +88,7 @@ function LogWeightModal({
   const addWeight = useAddBodyWeightEntry();
 
   const handleSubmit = async () => {
-    const val = parseFloat(weight);
+    const val = Number.parseFloat(weight);
     if (!val || val <= 0) {
       toast.error("Enter a valid weight");
       return;
@@ -118,15 +120,24 @@ function LogWeightModal({
               className="flex-1 bg-zinc-800 text-zinc-50 placeholder:text-zinc-500 
                          px-3 py-2.5 rounded-md text-sm outline-none
                          border border-zinc-700 focus:border-green-500 transition-colors"
-              autoFocus
             />
             <Select value={unit} onValueChange={setUnit}>
               <SelectTrigger className="w-20 bg-zinc-800 border-zinc-700 text-zinc-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-700">
-                <SelectItem value="kg" className="text-zinc-200 focus:bg-zinc-800">kg</SelectItem>
-                <SelectItem value="lbs" className="text-zinc-200 focus:bg-zinc-800">lbs</SelectItem>
+                <SelectItem
+                  value="kg"
+                  className="text-zinc-200 focus:bg-zinc-800"
+                >
+                  kg
+                </SelectItem>
+                <SelectItem
+                  value="lbs"
+                  className="text-zinc-200 focus:bg-zinc-800"
+                >
+                  lbs
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -137,7 +148,9 @@ function LogWeightModal({
             className="w-full h-11 bg-green-500 hover:bg-green-400 text-zinc-950 font-semibold
                        rounded-md text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {addWeight.isPending ? <Loader2 size={15} className="animate-spin" /> : null}
+            {addWeight.isPending ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : null}
             Log Weight
           </button>
         </div>
@@ -163,7 +176,7 @@ function LogMeasurementModal({
   const addMeasurement = useAddBodyMeasurement();
 
   const handleSubmit = async () => {
-    const val = parseFloat(value);
+    const val = Number.parseFloat(value);
     if (!val || val <= 0) {
       toast.error("Enter a valid measurement");
       return;
@@ -191,7 +204,11 @@ function LogMeasurementModal({
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-700">
               {BODY_PARTS.map((bp) => (
-                <SelectItem key={bp.value} value={bp.value} className="text-zinc-200 focus:bg-zinc-800">
+                <SelectItem
+                  key={bp.value}
+                  value={bp.value}
+                  className="text-zinc-200 focus:bg-zinc-800"
+                >
                   {bp.label}
                 </SelectItem>
               ))}
@@ -208,15 +225,24 @@ function LogMeasurementModal({
               className="flex-1 bg-zinc-800 text-zinc-50 placeholder:text-zinc-500 
                          px-3 py-2.5 rounded-md text-sm outline-none
                          border border-zinc-700 focus:border-green-500 transition-colors"
-              autoFocus
             />
             <Select value={unit} onValueChange={setUnit}>
               <SelectTrigger className="w-20 bg-zinc-800 border-zinc-700 text-zinc-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-700">
-                <SelectItem value="cm" className="text-zinc-200 focus:bg-zinc-800">cm</SelectItem>
-                <SelectItem value="in" className="text-zinc-200 focus:bg-zinc-800">in</SelectItem>
+                <SelectItem
+                  value="cm"
+                  className="text-zinc-200 focus:bg-zinc-800"
+                >
+                  cm
+                </SelectItem>
+                <SelectItem
+                  value="in"
+                  className="text-zinc-200 focus:bg-zinc-800"
+                >
+                  in
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -228,7 +254,9 @@ function LogMeasurementModal({
             className="w-full h-11 bg-green-500 hover:bg-green-400 text-zinc-950 font-semibold
                        rounded-md text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {addMeasurement.isPending ? <Loader2 size={15} className="animate-spin" /> : null}
+            {addMeasurement.isPending ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : null}
             Log Measurement
           </button>
         </div>
@@ -280,8 +308,10 @@ function ProfileHeader() {
     <div className="repsy-card p-5">
       <div className="flex items-start gap-4">
         {/* Avatar */}
-        <div className="w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700 
-                        flex items-center justify-center shrink-0">
+        <div
+          className="w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700 
+                        flex items-center justify-center shrink-0"
+        >
           <User size={28} className="text-zinc-500" />
         </div>
 
@@ -298,7 +328,9 @@ function ProfileHeader() {
             <input
               type="text"
               value={form.username}
-              onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, username: e.target.value }))
+              }
               placeholder="Username"
               className="w-full bg-zinc-800 text-zinc-50 px-3 py-2 rounded-md text-sm
                          outline-none border border-zinc-700 focus:border-green-500 transition-colors"
@@ -306,7 +338,9 @@ function ProfileHeader() {
             <input
               type="email"
               value={form.email}
-              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, email: e.target.value }))
+              }
               placeholder="Email"
               className="w-full bg-zinc-800 text-zinc-50 px-3 py-2 rounded-md text-sm
                          outline-none border border-zinc-700 focus:border-green-500 transition-colors"
@@ -370,7 +404,7 @@ function BodyWeightSection() {
 
   const sorted = useMemo(
     () => [...entries].sort((a, b) => Number(a.loggedAt) - Number(b.loggedAt)),
-    [entries]
+    [entries],
   );
 
   const chartData = sorted.slice(-30).map((e) => ({
@@ -406,7 +440,10 @@ function BodyWeightSection() {
           </span>
           <span className="text-zinc-500 text-sm ml-1">{latest.unit}</span>
           <p className="text-zinc-600 text-xs mt-0.5">
-            {format(new Date(Number(latest.loggedAt / 1_000_000n)), "EEE, MMM d")}
+            {format(
+              new Date(Number(latest.loggedAt / 1_000_000n)),
+              "EEE, MMM d",
+            )}
           </p>
         </div>
       )}
@@ -467,7 +504,7 @@ function MeasurementsSection() {
       [...entries]
         .filter((e) => e.bodyPart === selectedPart)
         .sort((a, b) => Number(a.loggedAt) - Number(b.loggedAt)),
-    [entries, selectedPart]
+    [entries, selectedPart],
   );
 
   const chartData = filtered.slice(-20).map((e) => ({
@@ -502,7 +539,11 @@ function MeasurementsSection() {
         </SelectTrigger>
         <SelectContent className="bg-zinc-900 border-zinc-700">
           {BODY_PARTS.map((bp) => (
-            <SelectItem key={bp.value} value={bp.value} className="text-zinc-200 focus:bg-zinc-800">
+            <SelectItem
+              key={bp.value}
+              value={bp.value}
+              className="text-zinc-200 focus:bg-zinc-800"
+            >
               {bp.label}
             </SelectItem>
           ))}
@@ -601,11 +642,16 @@ function WorkoutStatsSection() {
       });
 
       const calories = daySessions.reduce((sum, s) => {
-        const durationMin = s.durationSeconds ? Number(s.durationSeconds) / 60 : 0;
+        const durationMin = s.durationSeconds
+          ? Number(s.durationSeconds) / 60
+          : 0;
         return sum + s.totalVolume * 0.05 + durationMin * 5;
       }, 0);
 
-      days.push({ day: format(dayStart, "EEE"), calories: Math.round(calories) });
+      days.push({
+        day: format(dayStart, "EEE"),
+        calories: Math.round(calories),
+      });
     }
     return days;
   }, [sessions]);
@@ -618,7 +664,11 @@ function WorkoutStatsSection() {
         </h3>
         <ResponsiveContainer width="100%" height={140}>
           <BarChart data={weeklyData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#27272a"
+              vertical={false}
+            />
             <XAxis
               dataKey="week"
               stroke={AXIS_STYLE.stroke}
@@ -633,7 +683,12 @@ function WorkoutStatsSection() {
               allowDecimals={false}
             />
             <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-            <Bar dataKey="count" fill="#22c55e" radius={[3, 3, 0, 0]} name="Workouts" />
+            <Bar
+              dataKey="count"
+              fill="#22c55e"
+              radius={[3, 3, 0, 0]}
+              name="Workouts"
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -645,7 +700,11 @@ function WorkoutStatsSection() {
         <p className="text-[10px] text-zinc-600 mb-4">Last 7 days</p>
         <ResponsiveContainer width="100%" height={140}>
           <BarChart data={calorieDays}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#27272a"
+              vertical={false}
+            />
             <XAxis
               dataKey="day"
               stroke={AXIS_STYLE.stroke}
@@ -659,7 +718,12 @@ function WorkoutStatsSection() {
               axisLine={false}
             />
             <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-            <Bar dataKey="calories" fill="#16a34a" radius={[3, 3, 0, 0]} name="Calories" />
+            <Bar
+              dataKey="calories"
+              fill="#16a34a"
+              radius={[3, 3, 0, 0]}
+              name="Calories"
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -670,14 +734,45 @@ function WorkoutStatsSection() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
+  const { clear } = useInternetIdentity();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      clear();
+      toast.success("Signed out successfully");
+    } catch {
+      toast.error("Failed to sign out");
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 pb-24">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/50">
-        <div className="px-4 h-14 flex items-center">
+        <div className="px-4 h-14 flex items-center justify-between">
           <h1 className="text-zinc-50 font-bold text-lg tracking-tight">
             Profile
           </h1>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            data-ocid="profile.delete_button"
+            className="flex items-center gap-1.5 px-3 h-8 rounded-md text-xs
+                       text-zinc-500 hover:text-red-400 hover:bg-red-500/10
+                       transition-colors disabled:opacity-50"
+            title="Sign out"
+          >
+            {loggingOut ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <LogOut size={13} />
+            )}
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
         </div>
       </header>
 
@@ -690,9 +785,7 @@ export function ProfilePage() {
         {/* Footer */}
         <div className="text-center py-4 pb-2">
           <p className="text-zinc-700 text-xs">
-            © 2026. Built with{" "}
-            <span className="text-red-500">♥</span>{" "}
-            using{" "}
+            © 2026. Built with <span className="text-red-500">♥</span> using{" "}
             <a
               href="https://caffeine.ai"
               target="_blank"

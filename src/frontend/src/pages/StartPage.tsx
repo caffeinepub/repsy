@@ -1,18 +1,30 @@
-import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
-  Plus,
-  Play,
-  Dumbbell,
   ChevronRight,
-  Trash2,
+  Dumbbell,
   Loader2,
+  Play,
+  Plus,
+  Trash2,
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useTemplates, useCreateWorkoutSession, useDeleteTemplate, useCreateTemplate, useExerciseList, useCreateCustomExercise } from "../hooks/useQueries";
-import type { WorkoutTemplate, Exercise } from "../backend.d";
+import type { Exercise, WorkoutTemplate } from "../backend.d";
+import {
+  useCreateCustomExercise,
+  useCreateTemplate,
+  useCreateWorkoutSession,
+  useDeleteTemplate,
+  useExerciseList,
+  useTemplates,
+} from "../hooks/useQueries";
 
 const MUSCLE_GROUPS = [
   "Chest",
@@ -132,7 +144,9 @@ function CreateTemplateModal({
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [search, setSearch] = useState("");
   const [customName, setCustomName] = useState("");
-  const [customMuscleGroup, setCustomMuscleGroup] = useState<string>(MUSCLE_GROUPS[0]);
+  const [customMuscleGroup, setCustomMuscleGroup] = useState<string>(
+    MUSCLE_GROUPS[0],
+  );
   const [customCategory, setCustomCategory] = useState<string>(CATEGORIES[0]);
 
   const { data: exercises = [] } = useExerciseList();
@@ -140,8 +154,7 @@ function CreateTemplateModal({
   const createCustomExercise = useCreateCustomExercise();
 
   const filtered = exercises.filter(
-    (e) =>
-      !search || e.name.toLowerCase().includes(search.toLowerCase())
+    (e) => !search || e.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   const handleAddExercise = (exercise: Exercise) => {
@@ -217,9 +230,7 @@ function CreateTemplateModal({
           <input
             type="text"
             value={form.name}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, name: e.target.value }))
-            }
+            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
             placeholder="Template name"
             className="w-full bg-zinc-800 text-zinc-50 placeholder:text-zinc-500 
                        px-3 py-2.5 rounded-md text-sm outline-none
@@ -241,11 +252,14 @@ function CreateTemplateModal({
                     type="number"
                     value={ex.sets}
                     onChange={(e) => {
-                      const val = Math.max(1, parseInt(e.target.value) || 1);
+                      const val = Math.max(
+                        1,
+                        Number.parseInt(e.target.value) || 1,
+                      );
                       setForm((p) => ({
                         ...p,
                         exercises: p.exercises.map((e2, j) =>
-                          j === i ? { ...e2, sets: val } : e2
+                          j === i ? { ...e2, sets: val } : e2,
                         ),
                       }));
                     }}
@@ -292,7 +306,6 @@ function CreateTemplateModal({
                       placeholder="Search exercises..."
                       className="w-full bg-transparent text-zinc-50 placeholder:text-zinc-500 
                                  px-3 py-2 text-sm outline-none border-b border-zinc-700"
-                      autoFocus
                     />
                     <div className="max-h-44 overflow-y-auto">
                       {filtered.slice(0, 30).map((ex) => (
@@ -341,7 +354,6 @@ function CreateTemplateModal({
                       className="w-full bg-zinc-700 text-zinc-50 placeholder:text-zinc-500
                                  px-3 py-2 rounded-md text-sm outline-none
                                  border border-zinc-600 focus:border-green-500 transition-colors"
-                      autoFocus
                     />
                     <select
                       value={customMuscleGroup}
@@ -522,10 +534,7 @@ export function StartPage() {
             </div>
           ) : templates.length === 0 ? (
             <div className="repsy-card p-6 text-center">
-              <Dumbbell
-                size={28}
-                className="text-zinc-700 mx-auto mb-2"
-              />
+              <Dumbbell size={28} className="text-zinc-700 mx-auto mb-2" />
               <p className="text-zinc-500 text-sm">No templates yet</p>
               <p className="text-zinc-600 text-xs mt-1">
                 Tap + to create your first template

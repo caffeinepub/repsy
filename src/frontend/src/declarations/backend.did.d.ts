@@ -54,6 +54,14 @@ export interface User {
   'name' : string,
   'email' : string,
 }
+export interface UserProfile {
+  'username' : string,
+  'name' : string,
+  'email' : string,
+}
+export type UserRole = { 'admin' : null } |
+  { 'user' : null } |
+  { 'guest' : null };
 export interface WorkoutSession {
   'id' : string,
   'startedAt' : bigint,
@@ -90,45 +98,41 @@ export interface WorkoutTemplate {
   'exercises' : Array<TemplateExercise>,
 }
 export interface _SERVICE {
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addBodyMeasurement' : ActorMethod<
-    [string, string, number, string, bigint],
+    [string, number, string, bigint],
     BodyMeasurement
   >,
-  'addBodyWeightEntry' : ActorMethod<
-    [string, number, string, bigint],
-    BodyWeightEntry
-  >,
+  'addBodyWeightEntry' : ActorMethod<[number, string, bigint], BodyWeightEntry>,
   'addExerciseToSession' : ActorMethod<[string, string], WorkoutSession>,
-  'createCustomExercise' : ActorMethod<
-    [string, string, string, string],
-    Exercise
-  >,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createCustomExercise' : ActorMethod<[string, string, string], Exercise>,
   'createTemplate' : ActorMethod<
-    [string, string, Array<TemplateExercise>],
+    [string, Array<TemplateExercise>],
     WorkoutTemplate
   >,
-  'createWorkoutSession' : ActorMethod<
-    [string, string, [] | [string]],
-    WorkoutSession
-  >,
+  'createWorkoutSession' : ActorMethod<[string, [] | [string]], WorkoutSession>,
   'deleteTemplate' : ActorMethod<[string], boolean>,
   'deleteWorkoutSession' : ActorMethod<[string], boolean>,
   'finishWorkoutSession' : ActorMethod<[string, bigint], WorkoutSession>,
-  'getBodyMeasurements' : ActorMethod<
-    [string, [] | [string]],
-    Array<BodyMeasurement>
-  >,
-  'getBodyWeightEntries' : ActorMethod<[string], Array<BodyWeightEntry>>,
+  'getBodyMeasurements' : ActorMethod<[[] | [string]], Array<BodyMeasurement>>,
+  'getBodyWeightEntries' : ActorMethod<[], Array<BodyWeightEntry>>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getExerciseList' : ActorMethod<[], Array<Exercise>>,
   'getExercisesByMuscleGroup' : ActorMethod<[string], Array<Exercise>>,
   'getTemplate' : ActorMethod<[string], WorkoutTemplate>,
-  'getTemplates' : ActorMethod<[string], Array<WorkoutTemplate>>,
-  'getUser' : ActorMethod<[string], User>,
+  'getTemplates' : ActorMethod<[], Array<WorkoutTemplate>>,
+  'getUser' : ActorMethod<[], User>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getWorkoutSession' : ActorMethod<[string], WorkoutSession>,
-  'getWorkoutSessions' : ActorMethod<[string], Array<WorkoutSession>>,
+  'getWorkoutSessions' : ActorMethod<[], Array<WorkoutSession>>,
+  'isCallerAdmin' : ActorMethod<[], boolean>,
+  'register' : ActorMethod<[string, string, string], User>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchExercises' : ActorMethod<[string], Array<Exercise>>,
   'seed' : ActorMethod<[], undefined>,
-  'updateUser' : ActorMethod<[string, string, string, string], User>,
+  'updateUser' : ActorMethod<[string, string, string], User>,
   'updateWorkoutSession' : ActorMethod<
     [string, string, [] | [string], [] | [Array<SessionExerciseInput>]],
     WorkoutSession

@@ -1,19 +1,3 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useNavigate } from "@tanstack/react-router";
-import {
-  Check,
-  Plus,
-  X,
-  Trophy,
-  Clock,
-  Dumbbell,
-  ChevronLeft,
-  Loader2,
-  Trash2,
-} from "lucide-react";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,18 +8,43 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useWorkoutStore } from "../store/workoutStore";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { format } from "date-fns";
+import {
+  Check,
+  ChevronLeft,
+  Clock,
+  Dumbbell,
+  Loader2,
+  Plus,
+  Trash2,
+  Trophy,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import type {
+  Exercise,
+  SessionExerciseInput,
+  WorkoutSetInput,
+} from "../backend.d";
 import { AddExerciseModal } from "../components/workout/AddExerciseModal";
 import { RestTimer } from "../components/workout/RestTimer";
 import {
-  useWorkoutSession,
-  useExerciseList,
-  useUpdateWorkoutSession,
-  useFinishWorkoutSession,
   useAddExerciseToSession,
   useCancelWorkoutSession,
+  useExerciseList,
+  useFinishWorkoutSession,
+  useUpdateWorkoutSession,
+  useWorkoutSession,
 } from "../hooks/useQueries";
-import type { SessionExerciseInput, WorkoutSetInput, Exercise } from "../backend.d";
+import { useWorkoutStore } from "../store/workoutStore";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -210,7 +219,9 @@ function SetRow({
             PR
           </span>
         ) : (
-          <span className={`font-mono-repsy text-xs font-semibold ${completed ? "text-green-500/70" : "text-zinc-600"}`}>
+          <span
+            className={`font-mono-repsy text-xs font-semibold ${completed ? "text-green-500/70" : "text-zinc-600"}`}
+          >
             {setNum}
           </span>
         )}
@@ -222,7 +233,9 @@ function SetRow({
           type="number"
           inputMode="decimal"
           value={weight}
-          onChange={(e) => updateSetField(exIdx, setIdx, "weight", e.target.value)}
+          onChange={(e) =>
+            updateSetField(exIdx, setIdx, "weight", e.target.value)
+          }
           placeholder="—"
           className={`
             w-full bg-transparent text-center rounded-md text-sm outline-none
@@ -244,7 +257,9 @@ function SetRow({
           type="number"
           inputMode="numeric"
           value={reps}
-          onChange={(e) => updateSetField(exIdx, setIdx, "reps", e.target.value)}
+          onChange={(e) =>
+            updateSetField(exIdx, setIdx, "reps", e.target.value)
+          }
           placeholder="—"
           className={`
             w-full bg-transparent text-center rounded-md text-sm outline-none
@@ -279,8 +294,8 @@ function SetRow({
                 completed
                   ? "bg-green-500 text-zinc-950 shadow-[0_0_16px_rgba(34,197,94,0.5)] scale-100"
                   : !canComplete
-                  ? "bg-zinc-800 text-zinc-700 border border-zinc-800 opacity-40 cursor-not-allowed"
-                  : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-600 active:scale-95"
+                    ? "bg-zinc-800 text-zinc-700 border border-zinc-800 opacity-40 cursor-not-allowed"
+                    : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-600 active:scale-95"
               }
             `}
           >
@@ -310,10 +325,12 @@ function ExerciseCard({ exIdx }: ExerciseCardProps) {
   const allDone = completedCount === totalSets && totalSets > 0;
 
   return (
-    <div className={`
+    <div
+      className={`
       bg-zinc-900 border rounded-xl overflow-hidden animate-fade-in transition-all duration-300
       ${allDone ? "border-green-500/30" : "border-zinc-800"}
-    `}>
+    `}
+    >
       {/* Exercise header */}
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-3">
@@ -333,13 +350,16 @@ function ExerciseCard({ exIdx }: ExerciseCardProps) {
             <span className="text-xs font-mono-repsy text-zinc-600">
               {completedCount}/{totalSets}
             </span>
-            <span className={`
+            <span
+              className={`
               text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wide
-              ${allDone
-                ? "bg-green-500/20 text-green-400"
-                : "bg-zinc-800 text-zinc-500"
+              ${
+                allDone
+                  ? "bg-green-500/20 text-green-400"
+                  : "bg-zinc-800 text-zinc-500"
               }
-            `}>
+            `}
+            >
               {exercise.muscleGroup}
             </span>
             {/* Remove exercise */}
@@ -445,11 +465,11 @@ export function WorkoutPage() {
       sets: ex.sets.map(
         (s): WorkoutSetInput => ({
           setNumber: BigInt(s.setNumber),
-          weight: s.weight ? parseFloat(s.weight) : undefined,
-          reps: s.reps ? BigInt(parseInt(s.reps)) : undefined,
+          weight: s.weight ? Number.parseFloat(s.weight) : undefined,
+          reps: s.reps ? BigInt(Number.parseInt(s.reps)) : undefined,
           completed: s.completed,
           isPR: s.isPR,
-        })
+        }),
       ),
     }));
   }, [store.exercises]);
@@ -476,7 +496,14 @@ export function WorkoutPage() {
     return () => {
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     };
-  }, [store.isDirty, store.sessionId, store.name, buildSavePayload, updateSession, store]);
+  }, [
+    store.isDirty,
+    store.sessionId,
+    store.name,
+    buildSavePayload,
+    updateSession,
+    store,
+  ]);
 
   const handleAddExercise = async (exercise: Exercise) => {
     if (!store.sessionId) return;
@@ -524,23 +551,29 @@ export function WorkoutPage() {
   const allSetsCompleted =
     store.exercises.length > 0 &&
     store.exercises.every(
-      (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+      (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed),
     );
 
   // Calculate volume from store
   const currentVolume = store.exercises.reduce((total, ex) => {
-    return total + ex.sets.reduce((setTotal, s) => {
-      const w = parseFloat(s.weight) || 0;
-      const r = parseInt(s.reps) || 0;
-      return setTotal + (s.completed ? w * r : 0);
-    }, 0);
+    return (
+      total +
+      ex.sets.reduce((setTotal, s) => {
+        const w = Number.parseFloat(s.weight) || 0;
+        const r = Number.parseInt(s.reps) || 0;
+        return setTotal + (s.completed ? w * r : 0);
+      }, 0)
+    );
   }, 0);
 
   if (isLoading || !session) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 size={28} className="animate-spin text-green-500 mx-auto mb-3" />
+          <Loader2
+            size={28}
+            className="animate-spin text-green-500 mx-auto mb-3"
+          />
           <p className="text-zinc-500 text-sm">Loading workout...</p>
         </div>
       </div>
@@ -572,7 +605,9 @@ export function WorkoutPage() {
           {/* Inline stats — volume */}
           <div className="hidden sm:flex items-center gap-1 text-xs text-zinc-500 shrink-0">
             <Dumbbell size={11} className="text-zinc-600" />
-            <span className="font-mono-repsy">{formatVolume(currentVolume)}</span>
+            <span className="font-mono-repsy">
+              {formatVolume(currentVolume)}
+            </span>
           </div>
 
           {/* Elapsed timer — the hero metric */}
@@ -585,7 +620,9 @@ export function WorkoutPage() {
             type="button"
             onClick={() => allSetsCompleted && setShowFinish(true)}
             disabled={!allSetsCompleted}
-            title={!allSetsCompleted ? "Complete all sets to finish" : undefined}
+            title={
+              !allSetsCompleted ? "Complete all sets to finish" : undefined
+            }
             className={`shrink-0 text-zinc-950 font-bold text-xs px-4 h-9 rounded-lg transition-all ml-1
               ${
                 allSetsCompleted
@@ -602,11 +639,14 @@ export function WorkoutPage() {
         <div className="flex items-center gap-3 px-4 pb-2 -mt-0.5">
           <div className="flex items-center gap-1.5 text-[11px] text-zinc-600">
             <Dumbbell size={10} />
-            <span className="font-mono-repsy">{formatVolume(currentVolume)}</span>
+            <span className="font-mono-repsy">
+              {formatVolume(currentVolume)}
+            </span>
           </div>
           <div className="w-px h-3 bg-zinc-800" />
           <div className="text-[11px] text-zinc-600 font-mono-repsy">
-            Started {format(new Date(Number(session.startedAt / 1_000_000n)), "h:mm a")}
+            Started{" "}
+            {format(new Date(Number(session.startedAt / 1_000_000n)), "h:mm a")}
           </div>
         </div>
       </header>
@@ -659,7 +699,7 @@ export function WorkoutPage() {
         exerciseCount={store.exercises.length}
         prCount={store.exercises.reduce(
           (n, ex) => n + ex.sets.filter((s) => s.isPR).length,
-          0
+          0,
         )}
         isPending={finishSession.isPending || updateSession.isPending}
       />

@@ -1,22 +1,25 @@
-import { useEffect, useRef } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  createRouter,
-  createRoute,
-  createRootRoute,
-  RouterProvider,
   Outlet,
+  RouterProvider,
+  createRootRoute,
+  createRoute,
+  createRouter,
   redirect,
 } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
+import { useEffect, useRef, useState } from "react";
+import { RegisterModal } from "./components/auth/RegisterModal";
 import { BottomNav } from "./components/layout/BottomNav";
+import { useActor } from "./hooks/useActor";
+import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { useSeed } from "./hooks/useQueries";
+import { HistoryPage } from "./pages/HistoryPage";
+import { LoginPage } from "./pages/LoginPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { StartPage } from "./pages/StartPage";
 import { WorkoutPage } from "./pages/WorkoutPage";
-import { HistoryPage } from "./pages/HistoryPage";
-import { ReportsPage } from "./pages/ReportsPage";
-import { ProfilePage } from "./pages/ProfilePage";
-import { useSeed } from "./hooks/useQueries";
-import { useActor } from "./hooks/useActor";
 
 const SEED_KEY = "repsy_seeded_v1";
 
@@ -32,20 +35,16 @@ function SeedInitializer() {
   const hasFired = useRef(false);
 
   useEffect(() => {
-    // Wait until the actor is ready before attempting to seed
     if (!actor || isFetching) return;
     if (hasFired.current) return;
     hasFired.current = true;
 
     seedMutate(undefined, {
       onSuccess: () => {
-        // Mark seeded so we know the exercises are populated
         localStorage.setItem(SEED_KEY, "1");
-        // Ensure the exercise list is refetched fresh after seed
         qc.invalidateQueries({ queryKey: ["exercises"] });
       },
       onError: () => {
-        // If seed fails, still invalidate so stale empty cache is cleared
         qc.invalidateQueries({ queryKey: ["exercises"] });
       },
     });
@@ -54,13 +53,82 @@ function SeedInitializer() {
   return null;
 }
 
+// ─── Auth gate + registration flow ───────────────────────────────────────────
+
+type AuthState = "checking" | "needs_register" | "ready";
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { identity, isInitializing } = useInternetIdentity();
+  const { actor, isFetching } = useActor();
+  const [authState, setAuthState] = useState<AuthState>("checking");
+  const hasChecked = useRef(false);
+
+  const isAnonymous = !identity || identity.getPrincipal().isAnonymous();
+
+  // Once actor is ready and user is logged in, check if they're registered
+  useEffect(() => {
+    if (isInitializing || isFetching || !actor || isAnonymous) return;
+    if (hasChecked.current) return;
+    hasChecked.current = true;
+
+    // Try to fetch the user — if it throws, they need to register
+    actor
+      .getUser()
+      .then(() => {
+        setAuthState("ready");
+      })
+      .catch(() => {
+        // getUser threw — user not registered yet
+        setAuthState("needs_register");
+      });
+  }, [actor, isFetching, isInitializing, isAnonymous]);
+
+  // Reset check when identity changes (logout → login)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally resets when identity changes
+  useEffect(() => {
+    hasChecked.current = false;
+    setAuthState("checking");
+  }, [identity]);
+
+  // Not logged in → show login page
+  if (isAnonymous) {
+    return <LoginPage />;
+  }
+
+  // Still checking / actor not ready
+  if (authState === "checking" || isInitializing || isFetching) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-green-500/30 border-t-green-500 rounded-full animate-spin" />
+          <p className="text-zinc-600 text-sm">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Logged in but not registered → show register modal
+  if (authState === "needs_register") {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <RegisterModal open={true} onRegistered={() => setAuthState("ready")} />
+      </div>
+    );
+  }
+
+  // Fully authenticated and registered
+  return <>{children}</>;
+}
+
 // ─── Root layout ──────────────────────────────────────────────────────────────
 
 function RootLayout() {
   return (
     <div className="min-h-screen bg-zinc-950">
-      <SeedInitializer />
-      <Outlet />
+      <AuthGate>
+        <SeedInitializer />
+        <Outlet />
+      </AuthGate>
       <Toaster
         theme="dark"
         toastOptions={{

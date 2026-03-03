@@ -10,9 +10,10 @@ import Float "mo:core/Float";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Order "mo:core/Order";
-import Migration "migration";
+import Principal "mo:core/Principal";
+import MixinAuthorization "authorization/MixinAuthorization";
+import AccessControl "authorization/access-control";
 
-(with migration = Migration.run)
 actor {
   type Exercise = {
     id : Text;
@@ -124,12 +125,23 @@ actor {
     sets : [WorkoutSetInput];
   };
 
+  public type UserProfile = {
+    name : Text;
+    username : Text;
+    email : Text;
+  };
+
+  // Authorization system
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
+
   let exerciseStore = Map.empty<Text, Exercise>();
   let templateStore = Map.empty<Text, WorkoutTemplate>();
   let sessionStore = Map.empty<Text, WorkoutSession>();
   let bodyWeightStore = Map.empty<Text, BodyWeightEntry>();
   let bodyMeasurementStore = Map.empty<Text, BodyMeasurement>();
   let userStore = Map.empty<Text, User>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
 
   var seeded = false;
 
@@ -137,19 +149,14 @@ actor {
     prefix # "-" # Time.now().toText();
   };
 
+  func callerText(caller : Principal) : Text {
+    caller.toText();
+  };
+
   // Seed Data
   public shared ({ caller }) func seed() : async () {
     if (seeded) { return };
     seeded := true;
-
-    // Seed user
-    let user : User = {
-      id = "demo-user-1";
-      name = "Alex";
-      username = "alex";
-      email = "alex@repsy.app";
-    };
-    userStore.add("demo-user-1", user);
 
     // Seed exercises
     let exercises = [
@@ -260,6 +267,54 @@ actor {
     };
   };
 
+  // Registration
+  public shared ({ caller }) func register(name : Text, username : Text, email : Text) : async User {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Anonymous users cannot register");
+    };
+
+    let id = caller.toText();
+    let user : User = {
+      id;
+      name;
+      username;
+      email;
+    };
+    userStore.add(id, user);
+    
+    // Also create user profile
+    let profile : UserProfile = {
+      name;
+      username;
+      email;
+    };
+    userProfiles.add(caller, profile);
+    
+    user;
+  };
+
+  // User Profile Functions (required by frontend)
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view profiles");
+    };
+    userProfiles.get(caller);
+  };
+
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
+    userProfiles.get(user);
+  };
+
+  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    userProfiles.add(caller, profile);
+  };
+
   // Query Functions
   public query ({ caller }) func getExerciseList() : async [Exercise] {
     exerciseStore.values().toArray().sort();
@@ -269,34 +324,68 @@ actor {
     exerciseStore.values().toArray().filter(func(ex) { ex.name.contains(#text searchQuery) });
   };
 
-  public query ({ caller }) func getTemplates(userId : Text) : async [WorkoutTemplate] {
-    templateStore.values().toArray().filter(func(t) { t.userId == userId }).sort(WorkoutTemplate.compareByCreatedAt);
+  public query ({ caller }) func getTemplates() : async [WorkoutTemplate] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view templates");
+    };
+
+    templateStore.values().toArray().filter(func(t) { t.userId == caller.toText() }).sort(WorkoutTemplate.compareByCreatedAt);
   };
 
   public query ({ caller }) func getTemplate(id : Text) : async WorkoutTemplate {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view templates");
+    };
+
     switch (templateStore.get(id)) {
       case (null) { Runtime.trap("Template does not exist") };
-      case (?t) { t };
+      case (?template) {
+        if (template.userId != caller.toText()) {
+          Runtime.trap("Access denied: Only creator can view template");
+        };
+        template;
+      };
     };
   };
 
-  public query ({ caller }) func getWorkoutSessions(userId : Text) : async [WorkoutSession] {
-    sessionStore.values().toArray().filter(func(s) { s.userId == userId }).sort(WorkoutSession.compareByStartedAt);
+  public query ({ caller }) func getWorkoutSessions() : async [WorkoutSession] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view workout sessions");
+    };
+
+    sessionStore.values().toArray().filter(func(s) { s.userId == caller.toText() }).sort(WorkoutSession.compareByStartedAt);
   };
 
   public query ({ caller }) func getWorkoutSession(id : Text) : async WorkoutSession {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view workout sessions");
+    };
+
     switch (sessionStore.get(id)) {
       case (null) { Runtime.trap("Workout session does not exist") };
-      case (?s) { s };
+      case (?session) {
+        if (session.userId != caller.toText()) {
+          Runtime.trap("Access denied: Only creator of session may access");
+        };
+        session;
+      };
     };
   };
 
-  public query ({ caller }) func getBodyWeightEntries(userId : Text) : async [BodyWeightEntry] {
-    bodyWeightStore.values().toArray().filter(func(entry) { entry.userId == userId });
+  public query ({ caller }) func getBodyWeightEntries() : async [BodyWeightEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view body weight entries");
+    };
+
+    bodyWeightStore.values().toArray().filter(func(entry) { entry.userId == caller.toText() });
   };
 
-  public query ({ caller }) func getBodyMeasurements(userId : Text, bodyPart : ?Text) : async [BodyMeasurement] {
-    let measurements = bodyMeasurementStore.values().toArray().filter(func(m) { m.userId == userId });
+  public query ({ caller }) func getBodyMeasurements(bodyPart : ?Text) : async [BodyMeasurement] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view body measurements");
+    };
+
+    let measurements = bodyMeasurementStore.values().toArray().filter(func(m) { m.userId == caller.toText() });
     switch (bodyPart) {
       case (null) { measurements };
       case (?part) {
@@ -305,19 +394,31 @@ actor {
     };
   };
 
-  public query ({ caller }) func getUser(id : Text) : async User {
-    switch (userStore.get(id)) {
+  public query ({ caller }) func getUser() : async User {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view user data");
+    };
+
+    switch (userStore.get(caller.toText())) {
       case (null) { Runtime.trap("User does not exist") };
       case (?user) { user };
     };
   };
 
+  public query ({ caller }) func getExercisesByMuscleGroup(muscleGroup : Text) : async [Exercise] {
+    exerciseStore.values().toArray().filter(func(ex) { ex.muscleGroup == muscleGroup });
+  };
+
   // Update Functions
-  public shared ({ caller }) func createTemplate(userId : Text, name : Text, exercises : [TemplateExercise]) : async WorkoutTemplate {
+  public shared ({ caller }) func createTemplate(name : Text, exercises : [TemplateExercise]) : async WorkoutTemplate {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create templates");
+    };
+
     let id = generateId("template");
     let template : WorkoutTemplate = {
       id;
-      userId;
+      userId = caller.toText();
       name;
       createdAt = Time.now();
       exercises;
@@ -327,17 +428,31 @@ actor {
   };
 
   public shared ({ caller }) func deleteTemplate(id : Text) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete templates");
+    };
+
     switch (templateStore.get(id)) {
       case (null) { Runtime.trap("Template does not exist") };
-      case (?_) { templateStore.remove(id); true };
+      case (?template) {
+        if (template.userId != caller.toText()) {
+          Runtime.trap("Access denied: Only creator of template can delete template");
+        };
+        templateStore.remove(id);
+        true;
+      };
     };
   };
 
-  public shared ({ caller }) func createWorkoutSession(userId : Text, name : Text, templateId : ?Text) : async WorkoutSession {
+  public shared ({ caller }) func createWorkoutSession(name : Text, templateId : ?Text) : async WorkoutSession {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create workout sessions");
+    };
+
     let id = generateId("session");
     let session : WorkoutSession = {
       id;
-      userId;
+      userId = caller.toText();
       templateId;
       name;
       startedAt = Time.now();
@@ -353,9 +468,17 @@ actor {
   };
 
   public shared ({ caller }) func updateWorkoutSession(id : Text, name : Text, notes : ?Text, exercisesInput : ?[SessionExerciseInput]) : async WorkoutSession {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update workout sessions");
+    };
+
     switch (sessionStore.get(id)) {
       case (null) { Runtime.trap("Workout session does not exist") };
       case (?existing) {
+        if (existing.userId != caller.toText()) {
+          Runtime.trap("Access denied: Only creator of session can update");
+        };
+
         let updatedExercises = switch (exercisesInput) {
           case (null) { existing.exercises };
           case (?inputs) {
@@ -422,9 +545,17 @@ actor {
   };
 
   public shared ({ caller }) func finishWorkoutSession(id : Text, finishedAt : Int) : async WorkoutSession {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can finish workout sessions");
+    };
+
     switch (sessionStore.get(id)) {
       case (null) { Runtime.trap("Workout session does not exist") };
       case (?existing) {
+        if (existing.userId != caller.toText()) {
+          Runtime.trap("Access denied: Only creator of session can finish");
+        };
+
         let updatedSession : WorkoutSession = {
           existing with finishedAt = ?finishedAt;
         };
@@ -435,17 +566,31 @@ actor {
   };
 
   public shared ({ caller }) func deleteWorkoutSession(id : Text) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete workout sessions");
+    };
+
     switch (sessionStore.get(id)) {
       case (null) { Runtime.trap("Workout session does not exist") };
-      case (?_) { sessionStore.remove(id); true };
+      case (?session) {
+        if (session.userId != caller.toText()) {
+          Runtime.trap("Access denied: Only creator of session can delete");
+        };
+        sessionStore.remove(id);
+        true;
+      };
     };
   };
 
-  public shared ({ caller }) func addBodyWeightEntry(userId : Text, weight : Float, unit : Text, loggedAt : Int) : async BodyWeightEntry {
+  public shared ({ caller }) func addBodyWeightEntry(weight : Float, unit : Text, loggedAt : Int) : async BodyWeightEntry {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add body weight entries");
+    };
+
     let id = generateId("bodyWeightEntry");
     let entry : BodyWeightEntry = {
       id;
-      userId;
+      userId = caller.toText();
       weight;
       unit;
       loggedAt;
@@ -454,11 +599,15 @@ actor {
     entry;
   };
 
-  public shared ({ caller }) func addBodyMeasurement(userId : Text, bodyPart : Text, value : Float, unit : Text, loggedAt : Int) : async BodyMeasurement {
+  public shared ({ caller }) func addBodyMeasurement(bodyPart : Text, value : Float, unit : Text, loggedAt : Int) : async BodyMeasurement {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add body measurements");
+    };
+
     let id = generateId("bodyMeasurement");
     let measurement : BodyMeasurement = {
       id;
-      userId;
+      userId = caller.toText();
       bodyPart;
       value;
       unit;
@@ -468,7 +617,13 @@ actor {
     measurement;
   };
 
-  public shared ({ caller }) func updateUser(id : Text, name : Text, username : Text, email : Text) : async User {
+  public shared ({ caller }) func updateUser(name : Text, username : Text, email : Text) : async User {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update user data");
+    };
+
+    let id = caller.toText();
+
     switch (userStore.get(id)) {
       case (null) { Runtime.trap("User does not exist") };
       case (?_) {
@@ -479,15 +634,31 @@ actor {
           email;
         };
         userStore.add(id, user);
+        
+        // Also update user profile
+        let profile : UserProfile = {
+          name;
+          username;
+          email;
+        };
+        userProfiles.add(caller, profile);
+        
         user;
       };
     };
   };
 
   public shared ({ caller }) func addExerciseToSession(sessionId : Text, exerciseId : Text) : async WorkoutSession {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add exercises to sessions");
+    };
+
     switch (sessionStore.get(sessionId)) {
       case (null) { Runtime.trap("Workout session does not exist") };
       case (?existing) {
+        if (existing.userId != caller.toText()) {
+          Runtime.trap("Access denied: Only creator of session can modify");
+        };
         let order = existing.exercises.size() + 1;
         let exercise : SessionExercise = {
           id = generateId("exercise");
@@ -504,7 +675,11 @@ actor {
     };
   };
 
-  public shared ({ caller }) func createCustomExercise(userId : Text, name : Text, muscleGroup : Text, category : Text) : async Exercise {
+  public shared ({ caller }) func createCustomExercise(name : Text, muscleGroup : Text, category : Text) : async Exercise {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create custom exercises");
+    };
+
     let id = generateId("exercise");
     let exercise : Exercise = {
       id;
@@ -515,9 +690,5 @@ actor {
     };
     exerciseStore.add(id, exercise);
     exercise;
-  };
-
-  public query ({ caller }) func getExercisesByMuscleGroup(muscleGroup : Text) : async [Exercise] {
-    exerciseStore.values().toArray().filter(func(ex) { ex.muscleGroup == muscleGroup });
   };
 };

@@ -50,6 +50,11 @@ export const WorkoutSession = IDL.Record({
   'prCount' : IDL.Nat,
   'finishedAt' : IDL.Opt(IDL.Int),
 });
+export const UserRole = IDL.Variant({
+  'admin' : IDL.Null,
+  'user' : IDL.Null,
+  'guest' : IDL.Null,
+});
 export const Exercise = IDL.Record({
   'id' : IDL.Text,
   'name' : IDL.Text,
@@ -68,6 +73,11 @@ export const WorkoutTemplate = IDL.Record({
   'name' : IDL.Text,
   'createdAt' : IDL.Int,
   'exercises' : IDL.Vec(TemplateExercise),
+});
+export const UserProfile = IDL.Record({
+  'username' : IDL.Text,
+  'name' : IDL.Text,
+  'email' : IDL.Text,
 });
 export const User = IDL.Record({
   'id' : IDL.Text,
@@ -89,29 +99,31 @@ export const SessionExerciseInput = IDL.Record({
 });
 
 export const idlService = IDL.Service({
+  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addBodyMeasurement' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Float64, IDL.Text, IDL.Int],
+      [IDL.Text, IDL.Float64, IDL.Text, IDL.Int],
       [BodyMeasurement],
       [],
     ),
   'addBodyWeightEntry' : IDL.Func(
-      [IDL.Text, IDL.Float64, IDL.Text, IDL.Int],
+      [IDL.Float64, IDL.Text, IDL.Int],
       [BodyWeightEntry],
       [],
     ),
   'addExerciseToSession' : IDL.Func([IDL.Text, IDL.Text], [WorkoutSession], []),
+  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createCustomExercise' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Text, IDL.Text, IDL.Text],
       [Exercise],
       [],
     ),
   'createTemplate' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Vec(TemplateExercise)],
+      [IDL.Text, IDL.Vec(TemplateExercise)],
       [WorkoutTemplate],
       [],
     ),
   'createWorkoutSession' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+      [IDL.Text, IDL.Opt(IDL.Text)],
       [WorkoutSession],
       [],
     ),
@@ -119,15 +131,13 @@ export const idlService = IDL.Service({
   'deleteWorkoutSession' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'finishWorkoutSession' : IDL.Func([IDL.Text, IDL.Int], [WorkoutSession], []),
   'getBodyMeasurements' : IDL.Func(
-      [IDL.Text, IDL.Opt(IDL.Text)],
+      [IDL.Opt(IDL.Text)],
       [IDL.Vec(BodyMeasurement)],
       ['query'],
     ),
-  'getBodyWeightEntries' : IDL.Func(
-      [IDL.Text],
-      [IDL.Vec(BodyWeightEntry)],
-      ['query'],
-    ),
+  'getBodyWeightEntries' : IDL.Func([], [IDL.Vec(BodyWeightEntry)], ['query']),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getExerciseList' : IDL.Func([], [IDL.Vec(Exercise)], ['query']),
   'getExercisesByMuscleGroup' : IDL.Func(
       [IDL.Text],
@@ -135,17 +145,21 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getTemplate' : IDL.Func([IDL.Text], [WorkoutTemplate], ['query']),
-  'getTemplates' : IDL.Func([IDL.Text], [IDL.Vec(WorkoutTemplate)], ['query']),
-  'getUser' : IDL.Func([IDL.Text], [User], ['query']),
-  'getWorkoutSession' : IDL.Func([IDL.Text], [WorkoutSession], ['query']),
-  'getWorkoutSessions' : IDL.Func(
-      [IDL.Text],
-      [IDL.Vec(WorkoutSession)],
+  'getTemplates' : IDL.Func([], [IDL.Vec(WorkoutTemplate)], ['query']),
+  'getUser' : IDL.Func([], [User], ['query']),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'getWorkoutSession' : IDL.Func([IDL.Text], [WorkoutSession], ['query']),
+  'getWorkoutSessions' : IDL.Func([], [IDL.Vec(WorkoutSession)], ['query']),
+  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'register' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [User], []),
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'searchExercises' : IDL.Func([IDL.Text], [IDL.Vec(Exercise)], ['query']),
   'seed' : IDL.Func([], [], []),
-  'updateUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [User], []),
+  'updateUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [User], []),
   'updateWorkoutSession' : IDL.Func(
       [
         IDL.Text,
@@ -203,6 +217,11 @@ export const idlFactory = ({ IDL }) => {
     'prCount' : IDL.Nat,
     'finishedAt' : IDL.Opt(IDL.Int),
   });
+  const UserRole = IDL.Variant({
+    'admin' : IDL.Null,
+    'user' : IDL.Null,
+    'guest' : IDL.Null,
+  });
   const Exercise = IDL.Record({
     'id' : IDL.Text,
     'name' : IDL.Text,
@@ -221,6 +240,11 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'createdAt' : IDL.Int,
     'exercises' : IDL.Vec(TemplateExercise),
+  });
+  const UserProfile = IDL.Record({
+    'username' : IDL.Text,
+    'name' : IDL.Text,
+    'email' : IDL.Text,
   });
   const User = IDL.Record({
     'id' : IDL.Text,
@@ -242,13 +266,14 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
+    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addBodyMeasurement' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Float64, IDL.Text, IDL.Int],
+        [IDL.Text, IDL.Float64, IDL.Text, IDL.Int],
         [BodyMeasurement],
         [],
       ),
     'addBodyWeightEntry' : IDL.Func(
-        [IDL.Text, IDL.Float64, IDL.Text, IDL.Int],
+        [IDL.Float64, IDL.Text, IDL.Int],
         [BodyWeightEntry],
         [],
       ),
@@ -257,18 +282,19 @@ export const idlFactory = ({ IDL }) => {
         [WorkoutSession],
         [],
       ),
+    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createCustomExercise' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Text, IDL.Text, IDL.Text],
         [Exercise],
         [],
       ),
     'createTemplate' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Vec(TemplateExercise)],
+        [IDL.Text, IDL.Vec(TemplateExercise)],
         [WorkoutTemplate],
         [],
       ),
     'createWorkoutSession' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+        [IDL.Text, IDL.Opt(IDL.Text)],
         [WorkoutSession],
         [],
       ),
@@ -280,15 +306,17 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'getBodyMeasurements' : IDL.Func(
-        [IDL.Text, IDL.Opt(IDL.Text)],
+        [IDL.Opt(IDL.Text)],
         [IDL.Vec(BodyMeasurement)],
         ['query'],
       ),
     'getBodyWeightEntries' : IDL.Func(
-        [IDL.Text],
+        [],
         [IDL.Vec(BodyWeightEntry)],
         ['query'],
       ),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getExerciseList' : IDL.Func([], [IDL.Vec(Exercise)], ['query']),
     'getExercisesByMuscleGroup' : IDL.Func(
         [IDL.Text],
@@ -296,25 +324,21 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getTemplate' : IDL.Func([IDL.Text], [WorkoutTemplate], ['query']),
-    'getTemplates' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(WorkoutTemplate)],
+    'getTemplates' : IDL.Func([], [IDL.Vec(WorkoutTemplate)], ['query']),
+    'getUser' : IDL.Func([], [User], ['query']),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'getUser' : IDL.Func([IDL.Text], [User], ['query']),
     'getWorkoutSession' : IDL.Func([IDL.Text], [WorkoutSession], ['query']),
-    'getWorkoutSessions' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(WorkoutSession)],
-        ['query'],
-      ),
+    'getWorkoutSessions' : IDL.Func([], [IDL.Vec(WorkoutSession)], ['query']),
+    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'register' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [User], []),
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'searchExercises' : IDL.Func([IDL.Text], [IDL.Vec(Exercise)], ['query']),
     'seed' : IDL.Func([], [], []),
-    'updateUser' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
-        [User],
-        [],
-      ),
+    'updateUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [User], []),
     'updateWorkoutSession' : IDL.Func(
         [
           IDL.Text,

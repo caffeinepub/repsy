@@ -1,9 +1,17 @@
-import { useState, useMemo } from "react";
-import { Search, X, Plus, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useExerciseList, useCreateCustomExercise } from "../../hooks/useQueries";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2, Plus, Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Exercise } from "../../backend.d";
+import {
+  useCreateCustomExercise,
+  useExerciseList,
+} from "../../hooks/useQueries";
 
 interface AddExerciseModalProps {
   open: boolean;
@@ -86,8 +94,12 @@ export function AddExerciseModal({
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customName, setCustomName] = useState("");
-  const [customMuscleGroup, setCustomMuscleGroup] = useState<string>(MUSCLE_GROUPS[0]);
-  const [customCategory, setCustomCategory] = useState<string>(CUSTOM_CATEGORIES[0]);
+  const [customMuscleGroup, setCustomMuscleGroup] = useState<string>(
+    MUSCLE_GROUPS[0],
+  );
+  const [customCategory, setCustomCategory] = useState<string>(
+    CUSTOM_CATEGORIES[0],
+  );
 
   const { data: exercises = [], isLoading } = useExerciseList();
   const createCustomExercise = useCreateCustomExercise();
@@ -171,7 +183,6 @@ export function AddExerciseModal({
               className="w-full bg-zinc-800 text-zinc-50 placeholder:text-zinc-500 
                          pl-9 pr-3 py-2.5 rounded-md text-sm outline-none
                          border border-zinc-700 focus:border-green-500 transition-colors"
-              autoFocus
             />
           </div>
 
@@ -180,21 +191,25 @@ export function AddExerciseModal({
             <select
               value={muscleFilter}
               onChange={(e) => setMuscleFilter(e.target.value)}
-              className={selectClass + " flex-1"}
+              className={`${selectClass} flex-1`}
             >
               <option value="All">All Muscles</option>
               {MUSCLE_GROUPS.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
             </select>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className={selectClass + " flex-1"}
+              className={`${selectClass} flex-1`}
             >
               <option value="All">All Categories</option>
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
           </div>
@@ -241,10 +256,14 @@ export function AddExerciseModal({
                           )}
                         </p>
                         <p className="text-[11px] mt-0.5 flex items-center gap-1">
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${getMuscleColor(exercise.muscleGroup)}`}>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${getMuscleColor(exercise.muscleGroup)}`}
+                          >
                             {exercise.muscleGroup}
                           </span>
-                          <span className="text-zinc-600">{exercise.category}</span>
+                          <span className="text-zinc-600">
+                            {exercise.category}
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -281,7 +300,6 @@ export function AddExerciseModal({
                       className="w-full bg-zinc-800 text-zinc-50 placeholder:text-zinc-500
                                  px-3 py-2.5 rounded-md text-sm outline-none
                                  border border-zinc-700 focus:border-green-500 transition-colors"
-                      autoFocus
                     />
                     <select
                       value={customMuscleGroup}
@@ -336,35 +354,5 @@ export function AddExerciseModal({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ─── Filter Chip ──────────────────────────────────────────────────────────────
-
-interface FilterChipProps {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  variant?: "muscle" | "category";
-}
-
-function FilterChip({ label, active, onClick, variant = "muscle" }: FilterChipProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`
-        shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border
-        ${
-          active
-            ? variant === "category"
-              ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-              : "bg-green-500/20 text-green-400 border-green-500/40"
-            : "bg-zinc-800/60 text-zinc-500 border-zinc-700/60 hover:text-zinc-300 hover:border-zinc-600"
-        }
-      `}
-    >
-      {label}
-    </button>
   );
 }

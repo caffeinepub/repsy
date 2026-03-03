@@ -1,16 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useActor } from "./useActor";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
-  WorkoutTemplate,
-  WorkoutSession,
-  Exercise,
-  BodyWeightEntry,
   BodyMeasurement,
-  User,
+  BodyWeightEntry,
+  Exercise,
   SessionExerciseInput,
+  User,
+  WorkoutSession,
+  WorkoutTemplate,
 } from "../backend.d";
-
-export const DEMO_USER_ID = "demo-user-1";
+import { useActor } from "./useActor";
 
 // ─── Exercises ───────────────────────────────────────────────────────────────
 
@@ -47,10 +45,10 @@ export function useSearchExercises(query: string) {
 export function useTemplates() {
   const { actor, isFetching } = useActor();
   return useQuery<WorkoutTemplate[]>({
-    queryKey: ["templates", DEMO_USER_ID],
+    queryKey: ["templates"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getTemplates(DEMO_USER_ID);
+      return actor.getTemplates();
     },
     enabled: !!actor && !isFetching,
   });
@@ -73,10 +71,10 @@ export function useCreateTemplate() {
         sets: BigInt(e.sets),
         order: BigInt(e.order),
       }));
-      return actor.createTemplate(DEMO_USER_ID, name, templateExercises);
+      return actor.createTemplate(name, templateExercises);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["templates", DEMO_USER_ID] });
+      qc.invalidateQueries({ queryKey: ["templates"] });
     },
   });
 }
@@ -90,7 +88,7 @@ export function useDeleteTemplate() {
       return actor.deleteTemplate(id);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["templates", DEMO_USER_ID] });
+      qc.invalidateQueries({ queryKey: ["templates"] });
     },
   });
 }
@@ -100,10 +98,10 @@ export function useDeleteTemplate() {
 export function useWorkoutSessions() {
   const { actor, isFetching } = useActor();
   return useQuery<WorkoutSession[]>({
-    queryKey: ["sessions", DEMO_USER_ID],
+    queryKey: ["sessions"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getWorkoutSessions(DEMO_USER_ID);
+      return actor.getWorkoutSessions();
     },
     enabled: !!actor && !isFetching,
   });
@@ -134,10 +132,10 @@ export function useCreateWorkoutSession() {
       templateId: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.createWorkoutSession(DEMO_USER_ID, name, templateId);
+      return actor.createWorkoutSession(name, templateId);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["sessions", DEMO_USER_ID] });
+      qc.invalidateQueries({ queryKey: ["sessions"] });
     },
   });
 }
@@ -176,7 +174,7 @@ export function useFinishWorkoutSession() {
     },
     onSuccess: (data) => {
       qc.setQueryData(["session", data.id], data);
-      qc.invalidateQueries({ queryKey: ["sessions", DEMO_USER_ID] });
+      qc.invalidateQueries({ queryKey: ["sessions"] });
     },
   });
 }
@@ -190,7 +188,7 @@ export function useDeleteWorkoutSession() {
       return actor.deleteWorkoutSession(id);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["sessions", DEMO_USER_ID] });
+      qc.invalidateQueries({ queryKey: ["sessions"] });
     },
   });
 }
@@ -223,10 +221,10 @@ export function useAddExerciseToSession() {
 export function useBodyWeightEntries() {
   const { actor, isFetching } = useActor();
   return useQuery<BodyWeightEntry[]>({
-    queryKey: ["bodyweight", DEMO_USER_ID],
+    queryKey: ["bodyweight"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getBodyWeightEntries(DEMO_USER_ID);
+      return actor.getBodyWeightEntries();
     },
     enabled: !!actor && !isFetching,
   });
@@ -244,15 +242,10 @@ export function useAddBodyWeightEntry() {
       unit: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.addBodyWeightEntry(
-        DEMO_USER_ID,
-        weight,
-        unit,
-        BigInt(Date.now())
-      );
+      return actor.addBodyWeightEntry(weight, unit, BigInt(Date.now()));
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["bodyweight", DEMO_USER_ID] });
+      qc.invalidateQueries({ queryKey: ["bodyweight"] });
     },
   });
 }
@@ -262,10 +255,10 @@ export function useAddBodyWeightEntry() {
 export function useBodyMeasurements(bodyPart: string | null) {
   const { actor, isFetching } = useActor();
   return useQuery<BodyMeasurement[]>({
-    queryKey: ["measurements", DEMO_USER_ID, bodyPart],
+    queryKey: ["measurements", bodyPart],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getBodyMeasurements(DEMO_USER_ID, bodyPart);
+      return actor.getBodyMeasurements(bodyPart);
     },
     enabled: !!actor && !isFetching,
   });
@@ -286,18 +279,15 @@ export function useAddBodyMeasurement() {
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.addBodyMeasurement(
-        DEMO_USER_ID,
         bodyPart,
         value,
         unit,
-        BigInt(Date.now())
+        BigInt(Date.now()),
       );
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({
-        queryKey: ["measurements", DEMO_USER_ID, data.bodyPart],
-      });
-      qc.invalidateQueries({ queryKey: ["measurements", DEMO_USER_ID, null] });
+      qc.invalidateQueries({ queryKey: ["measurements", data.bodyPart] });
+      qc.invalidateQueries({ queryKey: ["measurements", null] });
     },
   });
 }
@@ -307,10 +297,10 @@ export function useAddBodyMeasurement() {
 export function useUser() {
   const { actor, isFetching } = useActor();
   return useQuery<User>({
-    queryKey: ["user", DEMO_USER_ID],
+    queryKey: ["user"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getUser(DEMO_USER_ID);
+      return actor.getUser();
     },
     enabled: !!actor && !isFetching,
   });
@@ -330,10 +320,10 @@ export function useUpdateUser() {
       email: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateUser(DEMO_USER_ID, name, username, email);
+      return actor.updateUser(name, username, email);
     },
     onSuccess: (data) => {
-      qc.setQueryData(["user", DEMO_USER_ID], data);
+      qc.setQueryData(["user"], data);
     },
   });
 }
@@ -354,10 +344,34 @@ export function useCreateCustomExercise() {
       category: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.createCustomExercise(DEMO_USER_ID, name, muscleGroup, category);
+      return actor.createCustomExercise(name, muscleGroup, category);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["exercises"] });
+    },
+  });
+}
+
+// ─── Register ────────────────────────────────────────────────────────────────
+
+export function useRegister() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      username,
+      email,
+    }: {
+      name: string;
+      username: string;
+      email: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.register(name, username, email);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user"] });
     },
   });
 }

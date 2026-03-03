@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { WorkoutSession, Exercise } from "../backend.d";
+import type { Exercise, WorkoutSession } from "../backend.d";
 
 export interface LiveSet {
   id: string;
@@ -39,7 +39,7 @@ interface LiveWorkoutStore {
     exIdx: number,
     setIdx: number,
     field: "weight" | "reps",
-    value: string
+    value: string,
   ) => void;
   completeSet: (exIdx: number, setIdx: number) => void;
   addSet: (exIdx: number) => void;
@@ -70,7 +70,7 @@ export const useWorkoutStore = create<LiveWorkoutStore>((set) => ({
 
   setSession: (session, exercises) => {
     const exerciseMap = new Map<string, Exercise>(
-      exercises.map((e) => [e.id, e])
+      exercises.map((e) => [e.id, e]),
     );
 
     const liveExercises: LiveExercise[] = session.exercises.map((se) => {
@@ -111,7 +111,7 @@ export const useWorkoutStore = create<LiveWorkoutStore>((set) => ({
         return {
           ...ex,
           sets: ex.sets.map((s, j) =>
-            j === setIdx ? { ...s, [field]: value } : s
+            j === setIdx ? { ...s, [field]: value } : s,
           ),
         };
       });
@@ -125,15 +125,14 @@ export const useWorkoutStore = create<LiveWorkoutStore>((set) => ({
         return {
           ...ex,
           sets: ex.sets.map((s, j) =>
-            j === setIdx ? { ...s, completed: !s.completed } : s
+            j === setIdx ? { ...s, completed: !s.completed } : s,
           ),
         };
       });
       const wasCompleted = state.exercises[exIdx]?.sets[setIdx]?.completed;
-      const restTimer =
-        !wasCompleted
-          ? { exerciseIdx: exIdx, setIdx, secondsLeft: 90 }
-          : state.restTimer;
+      const restTimer = !wasCompleted
+        ? { exerciseIdx: exIdx, setIdx, secondsLeft: 90 }
+        : state.restTimer;
       return { exercises, restTimer, isDirty: true };
     }),
 

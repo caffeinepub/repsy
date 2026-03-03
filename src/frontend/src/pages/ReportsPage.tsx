@@ -1,21 +1,3 @@
-import { useState, useMemo } from "react";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-import { format, startOfWeek, subWeeks, isAfter } from "date-fns";
-import { Loader2, TrendingUp } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,8 +5,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useWorkoutSessions, useExerciseList } from "../hooks/useQueries";
-import type { WorkoutSession, Exercise } from "../backend.d";
+import { format, isAfter, startOfWeek, subWeeks } from "date-fns";
+import { Loader2, TrendingUp } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { Exercise, WorkoutSession } from "../backend.d";
+import { useExerciseList, useWorkoutSessions } from "../hooks/useQueries";
 
 // ─── Chart theme ──────────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ function epley1RM(weight: number, reps: number): number {
 
 function buildVolumeData(
   sessions: WorkoutSession[],
-  exerciseId: string
+  exerciseId: string,
 ): Array<{ date: string; volume: number }> {
   const points: { date: string; volume: number }[] = [];
   for (const s of sessions) {
@@ -85,7 +85,7 @@ function buildVolumeData(
 
 function buildStrengthData(
   sessions: WorkoutSession[],
-  exerciseId: string
+  exerciseId: string,
 ): Array<{ date: string; oneRM: number }> {
   const points: { date: string; oneRM: number }[] = [];
   for (const s of sessions) {
@@ -108,7 +108,7 @@ function buildStrengthData(
 }
 
 function buildFrequencyData(
-  sessions: WorkoutSession[]
+  sessions: WorkoutSession[],
 ): Array<{ week: string; count: number }> {
   const data: Array<{ week: string; count: number }> = [];
   const now = new Date();
@@ -127,7 +127,7 @@ function buildFrequencyData(
 
 function buildMuscleData(
   sessions: WorkoutSession[],
-  exerciseMap: Map<string, Exercise>
+  exerciseMap: Map<string, Exercise>,
 ): Array<{ name: string; value: number }> {
   const groups: Record<string, number> = {};
   for (const s of sessions) {
@@ -176,7 +176,8 @@ export function ReportsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("volume");
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
 
-  const { data: sessions = [], isLoading: sessionsLoading } = useWorkoutSessions();
+  const { data: sessions = [], isLoading: sessionsLoading } =
+    useWorkoutSessions();
   const { data: exercises = [], isLoading: exLoading } = useExerciseList();
 
   const isLoading = sessionsLoading || exLoading;
@@ -201,27 +202,24 @@ export function ReportsPage() {
 
   const volumeData = useMemo(
     () => buildVolumeData(sessions, currentExercise?.id ?? ""),
-    [sessions, currentExercise]
+    [sessions, currentExercise],
   );
 
   const strengthData = useMemo(
     () => buildStrengthData(sessions, currentExercise?.id ?? ""),
-    [sessions, currentExercise]
+    [sessions, currentExercise],
   );
 
-  const frequencyData = useMemo(
-    () => buildFrequencyData(sessions),
-    [sessions]
-  );
+  const frequencyData = useMemo(() => buildFrequencyData(sessions), [sessions]);
 
   const muscleData = useMemo(
     () => buildMuscleData(sessions, exerciseMap),
-    [sessions, exerciseMap]
+    [sessions, exerciseMap],
   );
 
   const totalMuscleVolume = useMemo(
     () => muscleData.reduce((s, d) => s + d.value, 0),
-    [muscleData]
+    [muscleData],
   );
 
   return (
@@ -299,10 +297,7 @@ export function ReportsPage() {
                   ) : (
                     <ResponsiveContainer width="100%" height={220}>
                       <LineChart data={volumeData}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke="#27272a"
-                        />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                         <XAxis
                           dataKey="date"
                           stroke={AXIS_STYLE.stroke}
@@ -367,10 +362,7 @@ export function ReportsPage() {
                   ) : (
                     <ResponsiveContainer width="100%" height={220}>
                       <LineChart data={strengthData}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke="#27272a"
-                        />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                         <XAxis
                           dataKey="date"
                           stroke={AXIS_STYLE.stroke}

@@ -1,16 +1,16 @@
-import { useState, useMemo } from "react";
+import { format, isAfter, subMonths, subWeeks } from "date-fns";
 import {
-  Clock,
-  Dumbbell,
-  Trophy,
+  CalendarDays,
   ChevronDown,
   ChevronUp,
+  Clock,
+  Dumbbell,
   Loader2,
-  CalendarDays,
+  Trophy,
 } from "lucide-react";
-import { format, isAfter, subWeeks, subMonths } from "date-fns";
-import { useWorkoutSessions, useExerciseList } from "../hooks/useQueries";
+import { useMemo, useState } from "react";
 import type { WorkoutSession } from "../backend.d";
+import { useExerciseList, useWorkoutSessions } from "../hooks/useQueries";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -38,7 +38,9 @@ function SessionCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const date = new Date(Number(session.startedAt / 1_000_000n));
-  const duration = session.durationSeconds ? Number(session.durationSeconds) : 0;
+  const duration = session.durationSeconds
+    ? Number(session.durationSeconds)
+    : 0;
 
   return (
     <div className="repsy-card overflow-hidden animate-fade-in">
@@ -71,12 +73,16 @@ function SessionCard({
           </div>
           <div className="flex items-center gap-1.5 text-xs text-zinc-400">
             <Dumbbell size={12} className="text-zinc-600" />
-            <span className="font-mono-repsy">{formatVolume(session.totalVolume)}</span>
+            <span className="font-mono-repsy">
+              {formatVolume(session.totalVolume)}
+            </span>
           </div>
           {Number(session.prCount) > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-yellow-500">
               <Trophy size={12} />
-              <span className="font-mono-repsy">{Number(session.prCount)} PR</span>
+              <span className="font-mono-repsy">
+                {Number(session.prCount)} PR
+              </span>
             </div>
           )}
         </div>
@@ -124,7 +130,9 @@ function SessionCard({
                     <div
                       key={ws.id}
                       className={`flex items-center gap-3 text-xs px-2 py-1 rounded ${
-                        ws.completed ? "bg-green-500/8 text-zinc-300" : "text-zinc-500"
+                        ws.completed
+                          ? "bg-green-500/8 text-zinc-300"
+                          : "text-zinc-500"
                       }`}
                     >
                       <span className="font-mono-repsy w-4 text-zinc-600">
@@ -206,15 +214,19 @@ export function HistoryPage() {
   const filtered = useMemo(() => {
     const now = new Date();
     const sorted = [...sessions].sort(
-      (a, b) => Number(b.startedAt) - Number(a.startedAt)
+      (a, b) => Number(b.startedAt) - Number(a.startedAt),
     );
     if (filter === "week") {
       const cutoff = subWeeks(now, 1);
-      return sorted.filter((s) => isAfter(new Date(Number(s.startedAt / 1_000_000n)), cutoff));
+      return sorted.filter((s) =>
+        isAfter(new Date(Number(s.startedAt / 1_000_000n)), cutoff),
+      );
     }
     if (filter === "month") {
       const cutoff = subMonths(now, 1);
-      return sorted.filter((s) => isAfter(new Date(Number(s.startedAt / 1_000_000n)), cutoff));
+      return sorted.filter((s) =>
+        isAfter(new Date(Number(s.startedAt / 1_000_000n)), cutoff),
+      );
     }
     return sorted;
   }, [sessions, filter]);
@@ -222,7 +234,7 @@ export function HistoryPage() {
   // Completed workouts only
   const completed = useMemo(
     () => filtered.filter((s) => s.finishedAt !== undefined),
-    [filtered]
+    [filtered],
   );
 
   return (

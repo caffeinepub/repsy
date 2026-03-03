@@ -1,10 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  Play,
-  Clock,
-  BarChart2,
-  User,
-} from "lucide-react";
+import { BarChart2, Clock, Play, User } from "lucide-react";
 
 interface NavItem {
   path: string;
@@ -30,7 +25,8 @@ export function BottomNav() {
     >
       <div className="flex items-center justify-around h-[60px]">
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-          const isActive = currentPath === path || (path === "/start" && currentPath === "/");
+          const isActive =
+            currentPath === path || (path === "/start" && currentPath === "/");
           return (
             <Link
               key={path}
@@ -53,9 +49,7 @@ export function BottomNav() {
               <Icon
                 size={isActive ? 22 : 20}
                 className={`transition-all duration-200 ${
-                  isActive
-                    ? "drop-shadow-[0_0_10px_rgba(34,197,94,0.7)]"
-                    : ""
+                  isActive ? "drop-shadow-[0_0_10px_rgba(34,197,94,0.7)]" : ""
                 }`}
               />
               <span

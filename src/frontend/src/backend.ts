@@ -89,25 +89,23 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface Exercise {
+export interface SessionExercise {
     id: string;
-    name: string;
-    isCustom: boolean;
-    category: string;
-    muscleGroup: string;
+    exerciseId: string;
+    order: bigint;
+    sets: Array<WorkoutSet>;
 }
 export interface TemplateExercise {
     exerciseId: string;
     order: bigint;
     sets: bigint;
 }
-export interface BodyMeasurement {
+export interface Exercise {
     id: string;
-    value: number;
-    userId: string;
-    unit: string;
-    bodyPart: string;
-    loggedAt: bigint;
+    name: string;
+    isCustom: boolean;
+    category: string;
+    muscleGroup: string;
 }
 export interface WorkoutSet {
     id: string;
@@ -116,6 +114,14 @@ export interface WorkoutSet {
     isPR: boolean;
     reps?: bigint;
     completed: boolean;
+}
+export interface BodyMeasurement {
+    id: string;
+    value: number;
+    userId: string;
+    unit: string;
+    bodyPart: string;
+    loggedAt: bigint;
 }
 export interface WorkoutSession {
     id: string;
@@ -130,16 +136,16 @@ export interface WorkoutSession {
     prCount: bigint;
     finishedAt?: bigint;
 }
-export interface SessionExerciseInput {
-    exerciseId: string;
-    order: bigint;
-    sets: Array<WorkoutSetInput>;
-}
 export interface User {
     id: string;
     username: string;
     name: string;
     email: string;
+}
+export interface SessionExerciseInput {
+    exerciseId: string;
+    order: bigint;
+    sets: Array<WorkoutSetInput>;
 }
 export interface BodyWeightEntry {
     id: string;
@@ -162,64 +168,90 @@ export interface WorkoutTemplate {
     createdAt: bigint;
     exercises: Array<TemplateExercise>;
 }
-export interface SessionExercise {
-    id: string;
-    exerciseId: string;
-    order: bigint;
-    sets: Array<WorkoutSet>;
+export interface UserProfile {
+    username: string;
+    name: string;
+    email: string;
+}
+export enum UserRole {
+    admin = "admin",
+    user = "user",
+    guest = "guest"
 }
 export interface backendInterface {
-    addBodyMeasurement(userId: string, bodyPart: string, value: number, unit: string, loggedAt: bigint): Promise<BodyMeasurement>;
-    addBodyWeightEntry(userId: string, weight: number, unit: string, loggedAt: bigint): Promise<BodyWeightEntry>;
+    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    addBodyMeasurement(bodyPart: string, value: number, unit: string, loggedAt: bigint): Promise<BodyMeasurement>;
+    addBodyWeightEntry(weight: number, unit: string, loggedAt: bigint): Promise<BodyWeightEntry>;
     addExerciseToSession(sessionId: string, exerciseId: string): Promise<WorkoutSession>;
-    createCustomExercise(userId: string, name: string, muscleGroup: string, category: string): Promise<Exercise>;
-    createTemplate(userId: string, name: string, exercises: Array<TemplateExercise>): Promise<WorkoutTemplate>;
-    createWorkoutSession(userId: string, name: string, templateId: string | null): Promise<WorkoutSession>;
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createCustomExercise(name: string, muscleGroup: string, category: string): Promise<Exercise>;
+    createTemplate(name: string, exercises: Array<TemplateExercise>): Promise<WorkoutTemplate>;
+    createWorkoutSession(name: string, templateId: string | null): Promise<WorkoutSession>;
     deleteTemplate(id: string): Promise<boolean>;
     deleteWorkoutSession(id: string): Promise<boolean>;
     finishWorkoutSession(id: string, finishedAt: bigint): Promise<WorkoutSession>;
-    getBodyMeasurements(userId: string, bodyPart: string | null): Promise<Array<BodyMeasurement>>;
-    getBodyWeightEntries(userId: string): Promise<Array<BodyWeightEntry>>;
+    getBodyMeasurements(bodyPart: string | null): Promise<Array<BodyMeasurement>>;
+    getBodyWeightEntries(): Promise<Array<BodyWeightEntry>>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
+    getCallerUserRole(): Promise<UserRole>;
     getExerciseList(): Promise<Array<Exercise>>;
     getExercisesByMuscleGroup(muscleGroup: string): Promise<Array<Exercise>>;
     getTemplate(id: string): Promise<WorkoutTemplate>;
-    getTemplates(userId: string): Promise<Array<WorkoutTemplate>>;
-    getUser(id: string): Promise<User>;
+    getTemplates(): Promise<Array<WorkoutTemplate>>;
+    getUser(): Promise<User>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
     getWorkoutSession(id: string): Promise<WorkoutSession>;
-    getWorkoutSessions(userId: string): Promise<Array<WorkoutSession>>;
+    getWorkoutSessions(): Promise<Array<WorkoutSession>>;
+    isCallerAdmin(): Promise<boolean>;
+    register(name: string, username: string, email: string): Promise<User>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchExercises(searchQuery: string): Promise<Array<Exercise>>;
     seed(): Promise<void>;
-    updateUser(id: string, name: string, username: string, email: string): Promise<User>;
+    updateUser(name: string, username: string, email: string): Promise<User>;
     updateWorkoutSession(id: string, name: string, notes: string | null, exercisesInput: Array<SessionExerciseInput> | null): Promise<WorkoutSession>;
 }
-import type { SessionExercise as _SessionExercise, SessionExerciseInput as _SessionExerciseInput, WorkoutSession as _WorkoutSession, WorkoutSet as _WorkoutSet, WorkoutSetInput as _WorkoutSetInput } from "./declarations/backend.did.d.ts";
+import type { SessionExercise as _SessionExercise, SessionExerciseInput as _SessionExerciseInput, UserProfile as _UserProfile, UserRole as _UserRole, WorkoutSession as _WorkoutSession, WorkoutSet as _WorkoutSet, WorkoutSetInput as _WorkoutSetInput } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async addBodyMeasurement(arg0: string, arg1: string, arg2: number, arg3: string, arg4: bigint): Promise<BodyMeasurement> {
+    async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addBodyMeasurement(arg0, arg1, arg2, arg3, arg4);
+                const result = await this.actor._initializeAccessControlWithSecret(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addBodyMeasurement(arg0, arg1, arg2, arg3, arg4);
+            const result = await this.actor._initializeAccessControlWithSecret(arg0);
             return result;
         }
     }
-    async addBodyWeightEntry(arg0: string, arg1: number, arg2: string, arg3: bigint): Promise<BodyWeightEntry> {
+    async addBodyMeasurement(arg0: string, arg1: number, arg2: string, arg3: bigint): Promise<BodyMeasurement> {
         if (this.processError) {
             try {
-                const result = await this.actor.addBodyWeightEntry(arg0, arg1, arg2, arg3);
+                const result = await this.actor.addBodyMeasurement(arg0, arg1, arg2, arg3);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addBodyWeightEntry(arg0, arg1, arg2, arg3);
+            const result = await this.actor.addBodyMeasurement(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async addBodyWeightEntry(arg0: number, arg1: string, arg2: bigint): Promise<BodyWeightEntry> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addBodyWeightEntry(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addBodyWeightEntry(arg0, arg1, arg2);
             return result;
         }
     }
@@ -237,45 +269,59 @@ export class Backend implements backendInterface {
             return from_candid_WorkoutSession_n1(this._uploadFile, this._downloadFile, result);
         }
     }
-    async createCustomExercise(arg0: string, arg1: string, arg2: string, arg3: string): Promise<Exercise> {
+    async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.createCustomExercise(arg0, arg1, arg2, arg3);
+                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n13(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createCustomExercise(arg0, arg1, arg2, arg3);
+            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n13(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
-    async createTemplate(arg0: string, arg1: string, arg2: Array<TemplateExercise>): Promise<WorkoutTemplate> {
+    async createCustomExercise(arg0: string, arg1: string, arg2: string): Promise<Exercise> {
         if (this.processError) {
             try {
-                const result = await this.actor.createTemplate(arg0, arg1, arg2);
+                const result = await this.actor.createCustomExercise(arg0, arg1, arg2);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createTemplate(arg0, arg1, arg2);
+            const result = await this.actor.createCustomExercise(arg0, arg1, arg2);
             return result;
         }
     }
-    async createWorkoutSession(arg0: string, arg1: string, arg2: string | null): Promise<WorkoutSession> {
+    async createTemplate(arg0: string, arg1: Array<TemplateExercise>): Promise<WorkoutTemplate> {
         if (this.processError) {
             try {
-                const result = await this.actor.createWorkoutSession(arg0, arg1, to_candid_opt_n13(this._uploadFile, this._downloadFile, arg2));
+                const result = await this.actor.createTemplate(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createTemplate(arg0, arg1);
+            return result;
+        }
+    }
+    async createWorkoutSession(arg0: string, arg1: string | null): Promise<WorkoutSession> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createWorkoutSession(arg0, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg1));
                 return from_candid_WorkoutSession_n1(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createWorkoutSession(arg0, arg1, to_candid_opt_n13(this._uploadFile, this._downloadFile, arg2));
+            const result = await this.actor.createWorkoutSession(arg0, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg1));
             return from_candid_WorkoutSession_n1(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -321,32 +367,60 @@ export class Backend implements backendInterface {
             return from_candid_WorkoutSession_n1(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getBodyMeasurements(arg0: string, arg1: string | null): Promise<Array<BodyMeasurement>> {
+    async getBodyMeasurements(arg0: string | null): Promise<Array<BodyMeasurement>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getBodyMeasurements(arg0, to_candid_opt_n13(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.getBodyMeasurements(to_candid_opt_n15(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getBodyMeasurements(arg0, to_candid_opt_n13(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.getBodyMeasurements(to_candid_opt_n15(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
-    async getBodyWeightEntries(arg0: string): Promise<Array<BodyWeightEntry>> {
+    async getBodyWeightEntries(): Promise<Array<BodyWeightEntry>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getBodyWeightEntries(arg0);
+                const result = await this.actor.getBodyWeightEntries();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getBodyWeightEntries(arg0);
+            const result = await this.actor.getBodyWeightEntries();
             return result;
+        }
+    }
+    async getCallerUserProfile(): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerUserProfile();
+                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerUserProfile();
+            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCallerUserRole(): Promise<UserRole> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerUserRole();
+                return from_candid_UserRole_n17(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerUserRole();
+            return from_candid_UserRole_n17(this._uploadFile, this._downloadFile, result);
         }
     }
     async getExerciseList(): Promise<Array<Exercise>> {
@@ -391,32 +465,46 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getTemplates(arg0: string): Promise<Array<WorkoutTemplate>> {
+    async getTemplates(): Promise<Array<WorkoutTemplate>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getTemplates(arg0);
+                const result = await this.actor.getTemplates();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getTemplates(arg0);
+            const result = await this.actor.getTemplates();
             return result;
         }
     }
-    async getUser(arg0: string): Promise<User> {
+    async getUser(): Promise<User> {
         if (this.processError) {
             try {
-                const result = await this.actor.getUser(arg0);
+                const result = await this.actor.getUser();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getUser(arg0);
+            const result = await this.actor.getUser();
             return result;
+        }
+    }
+    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserProfile(arg0);
+                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserProfile(arg0);
+            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
         }
     }
     async getWorkoutSession(arg0: string): Promise<WorkoutSession> {
@@ -433,18 +521,60 @@ export class Backend implements backendInterface {
             return from_candid_WorkoutSession_n1(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getWorkoutSessions(arg0: string): Promise<Array<WorkoutSession>> {
+    async getWorkoutSessions(): Promise<Array<WorkoutSession>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getWorkoutSessions(arg0);
-                return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.getWorkoutSessions();
+                return from_candid_vec_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getWorkoutSessions(arg0);
-            return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.getWorkoutSessions();
+            return from_candid_vec_n19(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async isCallerAdmin(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerAdmin();
+            return result;
+        }
+    }
+    async register(arg0: string, arg1: string, arg2: string): Promise<User> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.register(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.register(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveCallerUserProfile(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveCallerUserProfile(arg0);
+            return result;
         }
     }
     async searchExercises(arg0: string): Promise<Array<Exercise>> {
@@ -475,37 +605,40 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateUser(arg0: string, arg1: string, arg2: string, arg3: string): Promise<User> {
+    async updateUser(arg0: string, arg1: string, arg2: string): Promise<User> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateUser(arg0, arg1, arg2, arg3);
+                const result = await this.actor.updateUser(arg0, arg1, arg2);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateUser(arg0, arg1, arg2, arg3);
+            const result = await this.actor.updateUser(arg0, arg1, arg2);
             return result;
         }
     }
     async updateWorkoutSession(arg0: string, arg1: string, arg2: string | null, arg3: Array<SessionExerciseInput> | null): Promise<WorkoutSession> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateWorkoutSession(arg0, arg1, to_candid_opt_n13(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n15(this._uploadFile, this._downloadFile, arg3));
+                const result = await this.actor.updateWorkoutSession(arg0, arg1, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n20(this._uploadFile, this._downloadFile, arg3));
                 return from_candid_WorkoutSession_n1(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateWorkoutSession(arg0, arg1, to_candid_opt_n13(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n15(this._uploadFile, this._downloadFile, arg3));
+            const result = await this.actor.updateWorkoutSession(arg0, arg1, to_candid_opt_n15(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n20(this._uploadFile, this._downloadFile, arg3));
             return from_candid_WorkoutSession_n1(this._uploadFile, this._downloadFile, result);
         }
     }
 }
 function from_candid_SessionExercise_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SessionExercise): SessionExercise {
     return from_candid_record_n6(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n18(_uploadFile, _downloadFile, value);
 }
 function from_candid_WorkoutSession_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WorkoutSession): WorkoutSession {
     return from_candid_record_n2(_uploadFile, _downloadFile, value);
@@ -520,6 +653,9 @@ function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
@@ -606,7 +742,16 @@ function from_candid_record_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint
         completed: value.completed
     };
 }
-function from_candid_vec_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WorkoutSession>): Array<WorkoutSession> {
+function from_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    admin: null;
+} | {
+    user: null;
+} | {
+    guest: null;
+}): UserRole {
+    return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
+}
+function from_candid_vec_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WorkoutSession>): Array<WorkoutSession> {
     return value.map((x)=>from_candid_WorkoutSession_n1(_uploadFile, _downloadFile, x));
 }
 function from_candid_vec_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_SessionExercise>): Array<SessionExercise> {
@@ -615,19 +760,22 @@ function from_candid_vec_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_vec_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WorkoutSet>): Array<WorkoutSet> {
     return value.map((x)=>from_candid_WorkoutSet_n8(_uploadFile, _downloadFile, x));
 }
-function to_candid_SessionExerciseInput_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SessionExerciseInput): _SessionExerciseInput {
-    return to_candid_record_n18(_uploadFile, _downloadFile, value);
+function to_candid_SessionExerciseInput_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SessionExerciseInput): _SessionExerciseInput {
+    return to_candid_record_n23(_uploadFile, _downloadFile, value);
 }
-function to_candid_WorkoutSetInput_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkoutSetInput): _WorkoutSetInput {
-    return to_candid_record_n21(_uploadFile, _downloadFile, value);
+function to_candid_UserRole_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
+    return to_candid_variant_n14(_uploadFile, _downloadFile, value);
 }
-function to_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+function to_candid_WorkoutSetInput_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkoutSetInput): _WorkoutSetInput {
+    return to_candid_record_n26(_uploadFile, _downloadFile, value);
+}
+function to_candid_opt_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);
 }
-function to_candid_opt_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<SessionExerciseInput> | null): [] | [Array<_SessionExerciseInput>] {
-    return value === null ? candid_none() : candid_some(to_candid_vec_n16(_uploadFile, _downloadFile, value));
+function to_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<SessionExerciseInput> | null): [] | [Array<_SessionExerciseInput>] {
+    return value === null ? candid_none() : candid_some(to_candid_vec_n21(_uploadFile, _downloadFile, value));
 }
-function to_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     exerciseId: string;
     order: bigint;
     sets: Array<WorkoutSetInput>;
@@ -639,10 +787,10 @@ function to_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     return {
         exerciseId: value.exerciseId,
         order: value.order,
-        sets: to_candid_vec_n19(_uploadFile, _downloadFile, value.sets)
+        sets: to_candid_vec_n24(_uploadFile, _downloadFile, value.sets)
     };
 }
-function to_candid_record_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     setNumber: bigint;
     weight?: number;
     isPR: boolean;
@@ -663,11 +811,26 @@ function to_candid_record_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         completed: value.completed
     };
 }
-function to_candid_vec_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<SessionExerciseInput>): Array<_SessionExerciseInput> {
-    return value.map((x)=>to_candid_SessionExerciseInput_n17(_uploadFile, _downloadFile, x));
+function to_candid_variant_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
+    admin: null;
+} | {
+    user: null;
+} | {
+    guest: null;
+} {
+    return value == UserRole.admin ? {
+        admin: null
+    } : value == UserRole.user ? {
+        user: null
+    } : value == UserRole.guest ? {
+        guest: null
+    } : value;
 }
-function to_candid_vec_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<WorkoutSetInput>): Array<_WorkoutSetInput> {
-    return value.map((x)=>to_candid_WorkoutSetInput_n20(_uploadFile, _downloadFile, x));
+function to_candid_vec_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<SessionExerciseInput>): Array<_SessionExerciseInput> {
+    return value.map((x)=>to_candid_SessionExerciseInput_n22(_uploadFile, _downloadFile, x));
+}
+function to_candid_vec_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<WorkoutSetInput>): Array<_WorkoutSetInput> {
+    return value.map((x)=>to_candid_WorkoutSetInput_n25(_uploadFile, _downloadFile, x));
 }
 export interface CreateActorOptions {
     agent?: Agent;
